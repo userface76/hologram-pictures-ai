@@ -38,6 +38,7 @@ function App() {
   const [listening, setListening] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [asset, setAsset] = useState<Asset | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageRole, setImageRole] = useState<ImageRole>("first_frame");
@@ -55,6 +56,10 @@ function App() {
   async function analyze(autoRender = false) {
     if (uploadingImage) {
       setStatus("사진 업로드가 끝난 뒤 다시 시도해 주세요");
+      return;
+    }
+    if (imagePreview && !asset) {
+      setStatus(uploadError ? `사진 업로드 실패 · ${uploadError}` : "사진 업로드가 아직 완료되지 않았습니다");
       return;
     }
     if (autoRender) setIsSubmitting(true);
@@ -154,9 +159,11 @@ function App() {
       return;
     }
 
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
     const localUrl = URL.createObjectURL(file);
     setImagePreview(localUrl);
     setAsset(null);
+    setUploadError(null);
     setUploadingImage(true);
     setStatus("HOLO가 사진을 Cloudflare R2에 업로드하는 중…");
 
@@ -169,10 +176,15 @@ function App() {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "업로드 실패");
+      if (!d.asset?.url) throw new Error("R2 공개 URL을 받지 못했습니다. R2_PUBLIC_BASE_URL을 확인해 주세요.");
       setAsset(d.asset);
+      setUploadError(null);
       setStatus("사진 준비 완료 · HOLO에게 움직임을 말해 주세요");
     } catch (e: any) {
-      setStatus(`사진 업로드 오류 · ${e.message}`);
+      const message = e?.message || "알 수 없는 업로드 오류";
+      setUploadError(message);
+      setAsset(null);
+      setStatus(`사진 업로드 실패 · ${message}`);
     } finally {
       setUploadingImage(false);
     }
@@ -182,6 +194,7 @@ function App() {
     if (imagePreview) URL.revokeObjectURL(imagePreview);
     setImagePreview(null);
     setAsset(null);
+    setUploadError(null);
     if (fileRef.current) fileRef.current.value = "";
     setStatus("사진이 제거되었습니다");
   }
@@ -193,6 +206,7 @@ function App() {
   }
 
   const activeRendering = Boolean(job && job.status !== "completed" && job.status !== "failed");
+  const imageNotReady = Boolean(imagePreview && !asset);
 
   return (
     <main
@@ -274,14 +288,15 @@ function App() {
                 <img src={imagePreview} alt="업로드한 참조 이미지" />
                 <div className="previewShade" />
                 <div className="previewInfo">
-                  <strong>{uploadingImage ? "업로드 중…" : asset ? "사진 준비 완료" : "업로드 오류"}</strong>
+                  <strong>{uploadingImage ? "업로드 중…" : asset ? "사진 준비 완료" : "사진 업로드 실패"}</strong>
+                  {uploadError && <small>{uploadError}</small>}
                   <select value={imageRole} onChange={(e) => setImageRole(e.target.value as ImageRole)} disabled={uploadingImage || isSubmitting}>
                     <option value="first_frame">첫 프레임</option>
                     <option value="reference_image">참조 이미지</option>
                     <option value="last_frame">마지막 프레임</option>
                   </select>
                   <div className="previewActions">
-                    <button onClick={() => fileRef.current?.click()} disabled={uploadingImage || isSubmitting}>교체</button>
+                    <button onClick={() => fileRef.current?.click()} disabled={uploadingImage || isSubmitting}>다시 선택</button>
                     <button onClick={clearImage} disabled={uploadingImage || isSubmitting}>삭제</button>
                   </div>
                 </div>
@@ -293,14 +308,14 @@ function App() {
             <div className="commandBar">
               <button className={listening ? "mic active" : "mic"} onClick={voice} disabled={isSubmitting}>◉</button>
               <textarea value={command} onChange={(e) => setCommand(e.target.value)} placeholder="HOLO에게 만들 영상을 말하거나 입력하세요." disabled={isSubmitting} />
-              <button onClick={() => void analyze(false)} disabled={isSubmitting || uploadingImage}>분석</button>
-              <button className="primary" onClick={() => void analyze(true)} disabled={isSubmitting || uploadingImage}>
-                {isSubmitting ? "준비 중…" : "영상 만들기"}
+              <button onClick={() => void analyze(false)} disabled={isSubmitting || uploadingImage || imageNotReady}>분석</button>
+              <button className="primary" onClick={() => void analyze(true)} disabled={isSubmitting || uploadingImage || imageNotReady}>
+                {uploadingImage ? "사진 업로드 중…" : imageNotReady ? "사진 확인 필요" : isSubmitting ? "준비 중…" : "영상 만들기"}
               </button>
             </div>
             <div className="quickHints">
               <span>예: “이 사진을 시작 장면으로 6초 광고 영상 만들어줘”</span>
-              <span>HOLO가 프롬프트 · 모델 · 비율 · 렌더를 자동 연결합니다.</span>
+              <span>{imageNotReady ? "사진 업로드가 성공해야 영상 만들기를 시작할 수 있습니다." : "HOLO가 프롬프트 · 모델 · 비율 · 렌더를 자동 연결합니다."}</span>
             </div>
           </div>
         </div>
