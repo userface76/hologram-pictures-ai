@@ -16,13 +16,17 @@ export type VideoIntent = {
 
 export type RenderJob = {
   id: string;
+  projectId?: string;
   provider: string;
   model: string;
   status: "queued" | "processing" | "completed" | "failed";
   progress: number;
   createdAt: string;
+  updatedAt?: string;
   prompt: string;
   outputUrl?: string;
+  sourceUrl?: string;
+  storageUrl?: string;
   providerTaskId?: string;
   error?: string;
 };
