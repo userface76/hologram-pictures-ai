@@ -23,7 +23,7 @@ function normalizeResolution(value: string) {
 }
 
 function normalizeRatio(value: string) {
-  const allowed = new Set(["21:9", "16:9", "4:3", "1:1", "3:4", "9:16"]);
+  const allowed = new Set(["adaptive", "21:9", "16:9", "4:3", "1:1", "3:4", "9:16"]);
   return allowed.has(value) ? value : "16:9";
 }
 
@@ -46,12 +46,25 @@ export const minimaxH3Provider: VideoProvider = {
       return { ...job, status: "processing", progress: 18, providerTaskId: `demo_${job.id}` };
     }
 
+    const content: Array<Record<string, any>> = [
+      { type: "text", text: plan.refinedPrompt },
+    ];
+
+    if (plan.sourceImageUrl) {
+      content.push({
+        type: "image_url",
+        image_url: { url: plan.sourceImageUrl },
+        role: plan.sourceImageRole || "first_frame",
+      });
+    }
+
+    const isFrameMode = Boolean(plan.sourceImageUrl && (plan.sourceImageRole === "first_frame" || plan.sourceImageRole === "last_frame" || !plan.sourceImageRole));
     const payload = {
       model: process.env.MINIMAX_H3_MODEL || "MiniMax-H3",
-      content: [{ type: "text", text: plan.refinedPrompt }],
+      content,
       resolution: normalizeResolution(plan.resolution),
       duration: Math.max(4, Math.min(15, Math.round(plan.duration))),
-      ratio: normalizeRatio(plan.aspectRatio),
+      ratio: isFrameMode ? "adaptive" : normalizeRatio(plan.aspectRatio),
     };
 
     const res = await fetch(`${baseUrl()}${process.env.MINIMAX_H3_CREATE_PATH || "/v2/video_generation"}`, {
