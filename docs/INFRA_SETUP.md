@@ -18,10 +18,10 @@ Then add these variables to the Railway **API service only**:
 
 ```env
 SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
+SUPABASE_SECRET_KEY=sb_secret_YOUR_KEY
 ```
 
-Never expose the service-role key to the web/Vite application.
+For older projects, `SUPABASE_SERVICE_ROLE_KEY` is still accepted by the code as a legacy fallback. Never expose either backend key to the web/Vite application.
 
 Tables created:
 - `projects`
