@@ -11,6 +11,8 @@ export type VideoIntent = {
   audio: boolean;
   style?: string;
   camera?: string[];
+  sourceImageUrl?: string;
+  sourceImageRole?: "first_frame" | "last_frame" | "reference_image";
   scenes: Array<{ index: number; seconds?: number; description: string }>;
 };
 
