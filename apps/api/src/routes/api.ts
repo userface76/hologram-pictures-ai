@@ -4,11 +4,22 @@ import { interpretWithAstra } from "../core/astra.js";
 import { getVideoProvider, listVideoProviders } from "../services/modelRouter.js";
 import { jobStore } from "../services/jobStore.js";
 import { createProject, createVideoRecord, getRenderJob, listProjects, listVideos, upsertRenderJob } from "../services/database.js";
-import { archiveRemoteVideo, isR2Configured } from "../services/r2Storage.js";
+import { archiveRemoteVideo, isR2Configured, uploadImageDataUrl } from "../services/r2Storage.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 
 export const apiRouter = Router();
-const commandSchema = z.object({ command: z.string().min(1).max(12000), autoRender: z.boolean().optional().default(false) });
+
+const imageRoleSchema = z.enum(["first_frame", "last_frame", "reference_image"]);
+const commandSchema = z.object({
+  command: z.string().min(1).max(12000),
+  autoRender: z.boolean().optional().default(false),
+  imageUrl: z.string().url().optional(),
+  imageRole: imageRoleSchema.optional().default("first_frame"),
+});
+const uploadSchema = z.object({
+  name: z.string().min(1).max(200).optional().default("image"),
+  dataUrl: z.string().min(20),
+});
 
 async function persistJob(job: any) {
   try { await upsertRenderJob(job); }
@@ -20,15 +31,34 @@ async function createAndPersistProject(plan: any) {
   catch (error) { console.warn("Supabase project persistence skipped:", error); return null; }
 }
 
+function withMedia(plan: any, input: z.infer<typeof commandSchema>) {
+  if (!input.imageUrl) return plan;
+  return {
+    ...plan,
+    sourceImageUrl: input.imageUrl,
+    sourceImageRole: input.imageRole,
+    aspectRatio: input.imageRole === "first_frame" || input.imageRole === "last_frame" ? "adaptive" : plan.aspectRatio,
+  };
+}
+
 apiRouter.get("/system/status", (_req, res) => res.json({
   ok: true,
   api: true,
+  assistant: "HOLO",
   openai: Boolean(process.env.OPENAI_API_KEY),
   minimax: Boolean(process.env.MINIMAX_API_KEY),
   demoVideoMode: (process.env.DEMO_VIDEO_MODE || "true").toLowerCase() === "true",
   supabase: isSupabaseConfigured(),
   r2: isR2Configured(),
 }));
+
+apiRouter.post("/assets/upload", async (req, res, next) => {
+  try {
+    const input = uploadSchema.parse(req.body);
+    const asset = await uploadImageDataUrl(input.dataUrl, input.name);
+    res.status(201).json({ asset });
+  } catch (e) { next(e); }
+});
 
 apiRouter.get("/models", (_req, res) => res.json({ models: listVideoProviders() }));
 apiRouter.get("/jobs", (_req, res) => res.json({ jobs: jobStore.list() }));
@@ -80,28 +110,30 @@ apiRouter.post("/command", async (req, res, next) => {
   try {
     const input = commandSchema.parse(req.body);
     const interpreted = await interpretWithAstra(input.command);
-    if (!input.autoRender) return res.json(interpreted);
+    const plan = withMedia(interpreted.plan, input);
+    if (!input.autoRender) return res.json({ ...interpreted, plan });
 
-    const project = await createAndPersistProject(interpreted.plan);
-    const provider = getVideoProvider(interpreted.plan.model);
-    let job = await provider.create(interpreted.plan);
+    const project = await createAndPersistProject(plan);
+    const provider = getVideoProvider(plan.model);
+    let job = await provider.create(plan);
     if (project?.id) job = { ...job, projectId: project.id };
     jobStore.set(job);
     await persistJob(job);
-    res.json({ ...interpreted, project, job });
+    res.json({ ...interpreted, plan, project, job });
   } catch (e) { next(e); }
 });
 
 apiRouter.post("/render", async (req, res, next) => {
   try {
-    const input = commandSchema.parse({ command: req.body.command, autoRender: true });
+    const input = commandSchema.parse({ ...req.body, autoRender: true });
     const interpreted = await interpretWithAstra(input.command);
-    const project = await createAndPersistProject(interpreted.plan);
-    const provider = getVideoProvider(interpreted.plan.model);
-    let job = await provider.create(interpreted.plan);
+    const plan = withMedia(interpreted.plan, input);
+    const project = await createAndPersistProject(plan);
+    const provider = getVideoProvider(plan.model);
+    let job = await provider.create(plan);
     if (project?.id) job = { ...job, projectId: project.id };
     jobStore.set(job);
     await persistJob(job);
-    res.status(202).json({ ...interpreted, project, job });
+    res.status(202).json({ ...interpreted, plan, project, job });
   } catch (e) { next(e); }
 });
