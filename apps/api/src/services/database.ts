@@ -43,6 +43,30 @@ export async function upsertRenderJob(job: RenderJob) {
   return data;
 }
 
+export async function getRenderJob(id: string): Promise<RenderJob | null> {
+  const db = getSupabaseAdmin();
+  if (!db) return null;
+  const { data, error } = await db.from("render_jobs").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    id: data.id,
+    projectId: data.project_id ?? undefined,
+    provider: data.provider,
+    model: data.model,
+    providerTaskId: data.provider_task_id ?? undefined,
+    status: data.status,
+    progress: data.progress ?? 0,
+    prompt: data.prompt,
+    error: data.error ?? undefined,
+    sourceUrl: data.source_url ?? undefined,
+    storageUrl: data.storage_url ?? undefined,
+    outputUrl: data.storage_url ?? data.source_url ?? undefined,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at ?? undefined,
+  } as RenderJob;
+}
+
 export async function createVideoRecord(job: RenderJob, plan?: VideoIntent) {
   const db = getSupabaseAdmin();
   if (!db || !job.storageUrl) return null;
