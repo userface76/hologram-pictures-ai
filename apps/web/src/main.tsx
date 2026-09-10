@@ -23,7 +23,7 @@ function App(){
       const d=await r.json(); if(!r.ok) throw new Error(d.error||"요청 실패");
       setPlan(d.plan);
       if(d.job){ setJob(d.job); setStatus(`렌더 작업 생성됨 · ${d.job.status}`); }
-      else setStatus(`분석 완료 · ${d.source==='astra'?'GPT-6 Astra':'로컬 파서'}`);
+      else setStatus(`분석 완료 · ${d.source==='astra'?'GPT-5.6 Sol':'로컬 파서'}`);
     }catch(e:any){setStatus(`연결 오류 · ${e.message}`)}
   }
 
@@ -58,7 +58,7 @@ function App(){
     <section className="universe">
       <div className="orbit orbit1"/><div className="orbit orbit2"/><div className="orbit orbit3"/>
       {positions.map(({n,a})=> <button key={n} className="node" style={{"--angle":`${a}deg`} as React.CSSProperties}><span>●</span>{n}</button>)}
-      <div className="core"><div className="coreRing"/><div className="coreInner"><strong>HOLOGRAM</strong><span>CORE</span><small>GPT-6 ASTRA</small></div></div>
+      <div className="core"><div className="coreRing"/><div className="coreInner"><strong>HOLOGRAM</strong><span>CORE</span><small>GPT-5.6 SOL</small></div></div>
     </section>
     <section className="console">
       <div className="status"><i/> {status}</div>
