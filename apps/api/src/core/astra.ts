@@ -14,7 +14,7 @@ export async function interpretWithAstra(text: string): Promise<{ plan: VideoInt
   try {
     const client = new OpenAI({ apiKey: key });
     const response = await client.responses.create({
-      model: process.env.OPENAI_MODEL || "gpt-6-astra",
+      model: process.env.OPENAI_MODEL || "gpt-5.6-sol",
       reasoning: { effort: "low" },
       input: `${systemPrompt}\n\nUSER COMMAND:\n${text}`
     });
@@ -22,7 +22,7 @@ export async function interpretWithAstra(text: string): Promise<{ plan: VideoInt
     const parsed = JSON.parse(raw) as VideoIntent;
     return { plan: { ...fallbackParse(text), ...parsed, userRequest: text }, source: "astra" };
   } catch (error) {
-    console.error("Astra interpretation failed; falling back.", error);
+    console.error("HOLOGRAM CORE OpenAI interpretation failed; falling back.", error);
     return { plan: fallbackParse(text), source: "fallback" };
   }
 }
