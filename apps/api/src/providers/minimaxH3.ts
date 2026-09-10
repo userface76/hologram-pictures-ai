@@ -34,6 +34,15 @@ function mapProgress(status: string) {
   return 0;
 }
 
+function minimaxErrorMessage(status: number, data: Record<string, any>) {
+  const type = String(data?.error?.type || data?.type || "");
+  const message = String(data?.error?.message || data?.message || "");
+  if (status === 402 || type.includes("insufficient_balance") || message.includes("insufficient balance") || message.includes("1008")) {
+    return "MiniMax API 잔액이 부족합니다. MiniMax 결제/잔액을 확인한 뒤 다시 시도해 주세요. 테스트만 할 때는 Railway의 DEMO_VIDEO_MODE=true를 사용할 수 있습니다.";
+  }
+  return `MiniMax H3 create failed (${status}): ${message || JSON.stringify(data)}`;
+}
+
 export const minimaxH3Provider: VideoProvider = {
   id: "minimax-h3",
   displayName: "MiniMax H3",
@@ -77,7 +86,7 @@ export const minimaxH3Provider: VideoProvider = {
     });
 
     const data = await res.json() as Record<string, any>;
-    if (!res.ok) throw new Error(`MiniMax H3 create failed (${res.status}): ${JSON.stringify(data)}`);
+    if (!res.ok) throw new Error(minimaxErrorMessage(res.status, data));
     const taskId = data.task_id;
     if (!taskId) throw new Error(`MiniMax H3 did not return task_id: ${JSON.stringify(data)}`);
 
