@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 let client: S3Client | null | undefined;
@@ -19,6 +20,11 @@ function getR2Client() {
   return client;
 }
 
+function publicUrlFor(key: string) {
+  const publicBase = process.env.R2_PUBLIC_BASE_URL?.replace(/\/$/, "");
+  return publicBase ? `${publicBase}/${key}` : null;
+}
+
 export function isR2Configured() {
   return Boolean(
     process.env.R2_ACCOUNT_ID &&
@@ -26,6 +32,47 @@ export function isR2Configured() {
     process.env.R2_SECRET_ACCESS_KEY &&
     process.env.R2_BUCKET
   );
+}
+
+export async function uploadImageDataUrl(dataUrl: string, originalName = "image") {
+  const r2 = getR2Client();
+  const bucket = process.env.R2_BUCKET;
+  if (!r2 || !bucket) throw new Error("R2 is not configured");
+  if (!process.env.R2_PUBLIC_BASE_URL) throw new Error("R2_PUBLIC_BASE_URL is not configured");
+
+  const match = /^data:(image\/(?:jpeg|png|webp|heic|heif));base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl);
+  if (!match) throw new Error("Unsupported image format. Use JPG, PNG, WEBP, HEIC or HEIF.");
+
+  const contentType = match[1];
+  const bytes = Buffer.from(match[2], "base64");
+  if (!bytes.length) throw new Error("Image is empty");
+  if (bytes.length > 30 * 1024 * 1024) throw new Error("Image must be 30 MB or smaller");
+
+  const extMap: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/heic": "heic",
+    "image/heif": "heif",
+  };
+  const ext = extMap[contentType] || "jpg";
+  const safeBase = originalName.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9가-힣_-]+/g, "-").slice(0, 60) || "image";
+  const key = `assets/${new Date().toISOString().slice(0, 10)}/${randomUUID()}-${safeBase}.${ext}`;
+
+  await r2.send(new PutObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    Body: bytes,
+    ContentType: contentType,
+    CacheControl: "public, max-age=31536000, immutable",
+  }));
+
+  return {
+    key,
+    url: publicUrlFor(key),
+    size: bytes.length,
+    contentType,
+  };
 }
 
 export async function archiveRemoteVideo(sourceUrl: string, jobId: string) {
@@ -46,9 +93,8 @@ export async function archiveRemoteVideo(sourceUrl: string, jobId: string) {
     ContentType: contentType,
   }));
 
-  const publicBase = process.env.R2_PUBLIC_BASE_URL?.replace(/\/$/, "");
   return {
     key,
-    url: publicBase ? `${publicBase}/${key}` : null,
+    url: publicUrlFor(key),
   };
 }
