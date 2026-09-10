@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -27,16 +27,22 @@ function App(){
     }catch(e:any){setStatus(`연결 오류 · ${e.message}`)}
   }
 
-  async function refreshJob(){
+  async function refreshJob(silent=false){
     if(!job) return;
-    setStatus("렌더 상태 확인 중…");
+    if(!silent) setStatus("렌더 상태 확인 중…");
     try{
       const r=await fetch(`${API}/api/jobs/${job.id}`);
       const d=await r.json(); if(!r.ok) throw new Error(d.error||"상태 조회 실패");
       setJob(d.job);
-      setStatus(d.job.status === "completed" ? "영상 생성 완료" : `렌더링 · ${d.job.status} · ${d.job.progress}%`);
-    }catch(e:any){ setStatus(`상태 조회 오류 · ${e.message}`); }
+      setStatus(d.job.status === "completed" ? "영상 생성 완료" : d.job.status === "failed" ? `영상 생성 실패 · ${d.job.error || "unknown"}` : `렌더링 · ${d.job.status} · ${d.job.progress}%`);
+    }catch(e:any){ if(!silent) setStatus(`상태 조회 오류 · ${e.message}`); }
   }
+
+  useEffect(()=>{
+    if(!job || job.status === "completed" || job.status === "failed") return;
+    const timer = window.setInterval(()=>{ void refreshJob(true); }, 10000);
+    return ()=>window.clearInterval(timer);
+  }, [job?.id, job?.status]);
 
   function voice(){
     const SR=(window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -58,7 +64,7 @@ function App(){
       <div className="status"><i/> {status}</div>
       <div className="commandBar"><button className={listening?"mic active":"mic"} onClick={voice}>◉</button><textarea value={command} onChange={e=>setCommand(e.target.value)} placeholder="무엇을 만들까요? 말하거나 입력하세요."/><button onClick={()=>analyze(false)}>분석</button><button className="primary" onClick={()=>analyze(true)}>영상 만들기</button></div>
       {plan && <div className="plan"><div><label>PROJECT</label><strong>{plan.title}</strong></div><div><label>MODEL</label><strong>{plan.model}</strong></div><div><label>FORMAT</label><strong>{plan.duration}s · {plan.aspectRatio} · {plan.resolution}</strong></div><div><label>AUDIO</label><strong>{plan.audio?"ON":"OFF"}</strong></div><p>{plan.refinedPrompt}</p></div>}
-      {job && <div className="plan"><div><label>RENDER</label><strong>{job.status} · {job.progress}%</strong></div><div><label>TASK</label><strong>{job.providerTaskId || job.id}</strong></div><div><button onClick={refreshJob}>상태 새로고침</button></div>{job.outputUrl && <p><a href={job.outputUrl} target="_blank" rel="noreferrer">생성된 영상 열기</a></p>}</div>}
+      {job && <div className="plan"><div><label>RENDER</label><strong>{job.status} · {job.progress}%</strong></div><div><label>TASK</label><strong>{job.providerTaskId || job.id}</strong></div><div><button onClick={()=>refreshJob(false)}>상태 새로고침</button></div>{job.outputUrl && <p><a href={job.outputUrl} target="_blank" rel="noreferrer">생성된 영상 열기</a></p>}</div>}
     </section>
     <footer>HOLOGRAM PICTURES AI — 말하면, 영상이 된다.</footer>
   </main>
