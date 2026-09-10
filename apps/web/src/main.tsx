@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
+import "./result.css";
 
 type ImageRole = "first_frame" | "last_frame" | "reference_image";
 type Plan = {
@@ -104,7 +105,7 @@ function App() {
         d.job.status === "completed"
           ? "HOLO 영상 생성 완료"
           : d.job.status === "failed"
-            ? `영상 생성 실패 · ${d.job.error || "unknown"}`
+            ? `영상 생성 실패 · ${d.job.error || "MiniMax가 작업을 완료하지 못했습니다"}`
             : `HOLO 렌더링 · ${d.job.status} · ${d.job.progress}%`,
       );
     } catch (e: any) {
@@ -220,7 +221,7 @@ function App() {
 
       <header className="topbar">
         <div className="brand"><b>HOLOGRAM</b> PICTURES AI <span>HOLO</span></div>
-        <small>CONVERSATIONAL AI VIDEO OS · CONNECTED DATA WORLD · V0.4</small>
+        <small>CONVERSATIONAL AI VIDEO OS · CONNECTED DATA WORLD · V0.5</small>
       </header>
 
       <section className="worldStage">
@@ -341,8 +342,26 @@ function App() {
             <div className="renderMeta">
               <span>{job.providerTaskId || job.id}</span>
               <button onClick={() => void refreshJob(false)}>상태 새로고침</button>
-              {job.outputUrl && <a href={job.outputUrl} target="_blank" rel="noreferrer">생성된 영상 열기</a>}
+              {job.outputUrl && <a href={job.outputUrl} target="_blank" rel="noreferrer">원본 영상 열기</a>}
             </div>
+
+            {job.status === "failed" && (
+              <div className="renderFailure">
+                <strong>영상 생성에 실패했습니다</strong>
+                <p>{job.error || "MiniMax가 이 작업을 완료하지 못했습니다. 같은 사진과 프롬프트로 다시 시도하거나 오류 로그를 확인해 주세요."}</p>
+                <button onClick={() => void analyze(true)} disabled={isSubmitting || imageNotReady}>같은 설정으로 다시 만들기</button>
+              </div>
+            )}
+
+            {job.status === "completed" && job.outputUrl && (
+              <div className="resultStage">
+                <div className="resultStageHead">
+                  <div><small>HOLO RESULT</small><strong>생성된 영상을 확인하세요</strong></div>
+                  <a href={job.outputUrl} target="_blank" rel="noreferrer">새 창에서 열기</a>
+                </div>
+                <video className="resultVideo" src={job.outputUrl} controls playsInline preload="metadata" />
+              </div>
+            )}
           </div>
         )}
       </section>
