@@ -3,7 +3,7 @@ import { z } from "zod";
 import { interpretWithAstra } from "../core/astra.js";
 import { getVideoProvider, listVideoProviders } from "../services/modelRouter.js";
 import { jobStore } from "../services/jobStore.js";
-import { createProject, createVideoRecord, listProjects, listVideos, upsertRenderJob } from "../services/database.js";
+import { createProject, createVideoRecord, getRenderJob, listProjects, listVideos, upsertRenderJob } from "../services/database.js";
 import { archiveRemoteVideo, isR2Configured } from "../services/r2Storage.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 
@@ -42,6 +42,10 @@ apiRouter.get("/videos", async (_req, res, next) => {
 apiRouter.get("/jobs/:id", async (req, res, next) => {
   try {
     let job = jobStore.get(req.params.id);
+    if (!job && isSupabaseConfigured()) {
+      try { job = (await getRenderJob(req.params.id)) ?? undefined; }
+      catch (error) { console.warn("Supabase job recovery skipped:", error); }
+    }
     if (!job) return res.status(404).json({ error: "job_not_found" });
 
     if (job.status === "processing" && job.providerTaskId) {
