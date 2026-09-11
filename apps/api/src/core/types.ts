@@ -1,3 +1,11 @@
+export type ImageRole = "first_frame" | "last_frame" | "reference_image";
+
+export type VideoMediaInputs = {
+  firstFrameUrl?: string;
+  referenceImageUrl?: string;
+  lastFrameUrl?: string;
+};
+
 export type VideoIntent = {
   intent: "create_video" | "revise_video" | "show_library" | "general";
   title: string;
@@ -11,8 +19,12 @@ export type VideoIntent = {
   audio: boolean;
   style?: string;
   camera?: string[];
+  firstFrameImageUrl?: string;
+  referenceImageUrl?: string;
+  lastFrameImageUrl?: string;
+  /** Legacy single-image fields kept for backward compatibility. */
   sourceImageUrl?: string;
-  sourceImageRole?: "first_frame" | "last_frame" | "reference_image";
+  sourceImageRole?: ImageRole;
   scenes: Array<{ index: number; seconds?: number; description: string }>;
 };
 
