@@ -1,10 +1,42 @@
 import type { RenderJob, VideoIntent } from "../core/types.js";
 import { getSupabaseAdmin } from "../lib/supabase.js";
 
-export async function createProject(plan: VideoIntent) {
+export async function ensureUserAccount(userId: string, email?: string | null) {
+  const db = getSupabaseAdmin();
+  if (!db) return null;
+
+  const { error: profileError } = await db.from("profiles").upsert({
+    user_id: userId,
+    email: email ?? null,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "user_id" });
+  if (profileError) throw profileError;
+
+  const { error: walletError } = await db.from("wallets").upsert({
+    user_id: userId,
+  }, { onConflict: "user_id", ignoreDuplicates: true });
+  if (walletError) throw walletError;
+
+  return true;
+}
+
+export async function getAccountSummary(userId: string) {
+  const db = getSupabaseAdmin();
+  if (!db) return null;
+  const [{ data: profile, error: profileError }, { data: wallet, error: walletError }] = await Promise.all([
+    db.from("profiles").select("user_id,email,display_name,role,status,created_at,updated_at").eq("user_id", userId).maybeSingle(),
+    db.from("wallets").select("balance_usd,updated_at").eq("user_id", userId).maybeSingle(),
+  ]);
+  if (profileError) throw profileError;
+  if (walletError) throw walletError;
+  return { profile, wallet };
+}
+
+export async function createProject(userId: string, plan: VideoIntent) {
   const db = getSupabaseAdmin();
   if (!db) return null;
   const { data, error } = await db.from("projects").insert({
+    user_id: userId,
     title: plan.title,
     status: "active",
     selected_model: plan.model,
@@ -15,18 +47,21 @@ export async function createProject(plan: VideoIntent) {
       resolution: plan.resolution,
       audio: plan.audio,
       style: plan.style ?? null,
+      source_image_url: plan.sourceImageUrl ?? null,
+      source_image_role: plan.sourceImageRole ?? null,
       scenes: plan.scenes,
     },
-  }).select("id,title,status,created_at").single();
+  }).select("id,user_id,title,status,created_at").single();
   if (error) throw error;
   return data;
 }
 
-export async function upsertRenderJob(job: RenderJob) {
+export async function upsertRenderJob(userId: string, job: RenderJob) {
   const db = getSupabaseAdmin();
   if (!db) return null;
   const { data, error } = await db.from("render_jobs").upsert({
     id: job.id,
+    user_id: userId,
     project_id: job.projectId ?? null,
     provider: job.provider,
     model: job.model,
@@ -43,14 +78,15 @@ export async function upsertRenderJob(job: RenderJob) {
   return data;
 }
 
-export async function getRenderJob(id: string): Promise<RenderJob | null> {
+export async function getRenderJob(userId: string, id: string): Promise<RenderJob | null> {
   const db = getSupabaseAdmin();
   if (!db) return null;
-  const { data, error } = await db.from("render_jobs").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await db.from("render_jobs").select("*").eq("id", id).eq("user_id", userId).maybeSingle();
   if (error) throw error;
   if (!data) return null;
   return {
     id: data.id,
+    userId: data.user_id ?? undefined,
     projectId: data.project_id ?? undefined,
     provider: data.provider,
     model: data.model,
@@ -67,10 +103,11 @@ export async function getRenderJob(id: string): Promise<RenderJob | null> {
   } as RenderJob;
 }
 
-export async function createVideoRecord(job: RenderJob, plan?: VideoIntent) {
+export async function createVideoRecord(userId: string, job: RenderJob, plan?: VideoIntent) {
   const db = getSupabaseAdmin();
   if (!db || !job.storageUrl) return null;
   const { data, error } = await db.from("videos").upsert({
+    user_id: userId,
     render_job_id: job.id,
     project_id: job.projectId ?? null,
     provider: job.provider,
@@ -87,18 +124,41 @@ export async function createVideoRecord(job: RenderJob, plan?: VideoIntent) {
   return data;
 }
 
-export async function listProjects(limit = 30) {
+export async function recordAsset(userId: string, asset: { key: string; url: string | null; size?: number; contentType?: string }, originalName?: string) {
+  const db = getSupabaseAdmin();
+  if (!db) return null;
+  const { data, error } = await db.from("assets").insert({
+    user_id: userId,
+    object_key: asset.key,
+    public_url: asset.url,
+    original_name: originalName ?? null,
+    content_type: asset.contentType ?? null,
+    size_bytes: asset.size ?? null,
+  }).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function listProjects(userId: string, limit = 30) {
   const db = getSupabaseAdmin();
   if (!db) return [];
-  const { data, error } = await db.from("projects").select("*").order("created_at", { ascending: false }).limit(limit);
+  const { data, error } = await db.from("projects").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(limit);
   if (error) throw error;
   return data ?? [];
 }
 
-export async function listVideos(limit = 30) {
+export async function listVideos(userId: string, limit = 30) {
   const db = getSupabaseAdmin();
   if (!db) return [];
-  const { data, error } = await db.from("videos").select("*").order("created_at", { ascending: false }).limit(limit);
+  const { data, error } = await db.from("videos").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(limit);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function listAssets(userId: string, limit = 50) {
+  const db = getSupabaseAdmin();
+  if (!db) return [];
+  const { data, error } = await db.from("assets").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(limit);
   if (error) throw error;
   return data ?? [];
 }
