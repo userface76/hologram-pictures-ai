@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { interpretWithAstra } from "../core/astra.js";
+import type { VideoMediaInputs } from "../core/types.js";
 import { getVideoProvider, listVideoProviders } from "../services/modelRouter.js";
 import { jobStore } from "../services/jobStore.js";
 import {
@@ -21,15 +22,23 @@ import { isSupabaseConfigured } from "../lib/supabase.js";
 export const apiRouter = Router();
 
 const imageRoleSchema = z.enum(["first_frame", "last_frame", "reference_image"]);
+const imagesSchema = z.object({
+  firstFrameUrl: z.string().url().optional(),
+  referenceImageUrl: z.string().url().optional(),
+  lastFrameUrl: z.string().url().optional(),
+}).optional();
 const commandSchema = z.object({
   command: z.string().min(1).max(12000),
   autoRender: z.boolean().optional().default(false),
+  images: imagesSchema,
+  /** Legacy single-image payload. */
   imageUrl: z.string().url().optional(),
   imageRole: imageRoleSchema.optional().default("first_frame"),
 });
 const uploadSchema = z.object({
   name: z.string().min(1).max(200).optional().default("image"),
   dataUrl: z.string().min(20),
+  role: imageRoleSchema.optional(),
 });
 
 function userIdOf(req: any) {
@@ -48,13 +57,26 @@ async function createAndPersistProject(userId: string, plan: any) {
   catch (error) { console.warn("Supabase project persistence skipped:", error); return null; }
 }
 
+function mediaOf(input: z.infer<typeof commandSchema>): VideoMediaInputs {
+  if (input.images) return input.images;
+  if (!input.imageUrl) return {};
+  if (input.imageRole === "reference_image") return { referenceImageUrl: input.imageUrl };
+  if (input.imageRole === "last_frame") return { lastFrameUrl: input.imageUrl };
+  return { firstFrameUrl: input.imageUrl };
+}
+
 function withMedia(plan: any, input: z.infer<typeof commandSchema>) {
-  if (!input.imageUrl) return plan;
+  const media = mediaOf(input);
+  const hasFrames = Boolean(media.firstFrameUrl || media.lastFrameUrl);
   return {
     ...plan,
-    sourceImageUrl: input.imageUrl,
-    sourceImageRole: input.imageRole,
-    aspectRatio: input.imageRole === "first_frame" || input.imageRole === "last_frame" ? "adaptive" : plan.aspectRatio,
+    firstFrameImageUrl: media.firstFrameUrl,
+    referenceImageUrl: media.referenceImageUrl,
+    lastFrameImageUrl: media.lastFrameUrl,
+    // Keep legacy fields populated for older stored clients and jobs.
+    sourceImageUrl: media.firstFrameUrl || media.referenceImageUrl || media.lastFrameUrl,
+    sourceImageRole: media.firstFrameUrl ? "first_frame" : media.referenceImageUrl ? "reference_image" : media.lastFrameUrl ? "last_frame" : undefined,
+    aspectRatio: hasFrames ? "adaptive" : plan.aspectRatio,
   };
 }
 
@@ -83,9 +105,9 @@ apiRouter.post("/assets/upload", async (req, res, next) => {
     const userId = userIdOf(req);
     const input = uploadSchema.parse(req.body);
     const asset = await uploadImageDataUrl(userId, input.dataUrl, input.name);
-    try { await recordAsset(userId, asset, input.name); }
+    try { await recordAsset(userId, asset, input.name, input.role); }
     catch (error) { console.warn("Supabase asset persistence skipped:", error); }
-    res.status(201).json({ asset });
+    res.status(201).json({ asset: { ...asset, role: input.role ?? null } });
   } catch (e) { next(e); }
 });
 
@@ -148,7 +170,8 @@ apiRouter.post("/command", async (req, res, next) => {
   try {
     const userId = userIdOf(req);
     const input = commandSchema.parse(req.body);
-    const interpreted = await interpretWithAstra(input.command);
+    const media = mediaOf(input);
+    const interpreted = await interpretWithAstra(input.command, media);
     const plan = withMedia(interpreted.plan, input);
     if (!input.autoRender) return res.json({ ...interpreted, plan });
 
@@ -166,7 +189,8 @@ apiRouter.post("/render", async (req, res, next) => {
   try {
     const userId = userIdOf(req);
     const input = commandSchema.parse({ ...req.body, autoRender: true });
-    const interpreted = await interpretWithAstra(input.command);
+    const media = mediaOf(input);
+    const interpreted = await interpretWithAstra(input.command, media);
     const plan = withMedia(interpreted.plan, input);
     const project = await createAndPersistProject(userId, plan);
     const provider = getVideoProvider(plan.model);
