@@ -60,16 +60,16 @@ function renderLanding(session?: Session | null) {
 
       <section class="landingHero">
         <div class="landingCopy">
-          <span class="landingEyebrow">HYPER-CONNECTED VISUAL INTELLIGENCE</span>
-          <h1>말하면,<span>영상이 된다.</span></h1>
-          <p>HOLO가 프롬프트를 이해하고 이미지와 아이디어를 영화 같은 영상으로 연결합니다. 회원별 프로젝트와 영상은 안전하게 분리되어 관리됩니다.</p>
+          <span class="landingEyebrow">FROM IDEA TO VIDEO INTELLIGENCE</span>
+          <h1>생각은 자유롭게.<span>프롬프트는 HOLO가.</span></h1>
+          <p>막연한 아이디어도 괜찮습니다. HOLO가 장면, 분위기, 카메라, 움직임과 이미지의 역할을 함께 정리해 영상 생성에 최적화된 프롬프트로 완성합니다.</p>
           <div class="landingActions">
-            <button id="hero-start" class="heroPrimary" type="button">${loggedIn ? "HOLO 시작하기" : "무료로 시작하기"}</button>
+            <button id="hero-start" class="heroPrimary" type="button">${loggedIn ? "HOLO와 시작하기" : "아이디어 시작하기"}</button>
             <button id="hero-pricing" type="button">요금제 보기</button>
           </div>
           <div class="landingMeta">
             <div><strong>MiniMax H3</strong>VIDEO ENGINE</div>
-            <div><strong>HOLO</strong>AI ASSISTANT</div>
+            <div><strong>HOLO</strong>PROMPT INTELLIGENCE</div>
             <div><strong>R2 + Supabase</strong>SECURE WORKSPACE</div>
           </div>
         </div>
@@ -78,21 +78,21 @@ function renderLanding(session?: Session | null) {
           <div class="worldPlane"></div>
           <div class="mobileGlobe"></div>
           <div class="networkLine line1"></div><div class="networkLine line2"></div><div class="networkLine line3"></div><div class="networkLine line4"></div>
-          <i class="networkNode node1" data-label="PROJECTS"></i>
-          <i class="networkNode node2" data-label="RENDER"></i>
-          <i class="networkNode node3" data-label="ASSETS"></i>
-          <i class="networkNode node4" data-label="LIBRARY"></i>
-          <i class="networkNode node5" data-label="PROMPT AI"></i>
+          <i class="networkNode node1" data-label="THINK"></i>
+          <i class="networkNode node2" data-label="REFINE"></i>
+          <i class="networkNode node3" data-label="PROMPT"></i>
+          <i class="networkNode node4" data-label="CREATE"></i>
+          <i class="networkNode node5" data-label="HOLO CORE"></i>
           <div class="worldCore"><strong>HOLO</strong><span>HOLOGRAM CORE</span></div>
         </div>
       </section>
 
       <section class="landingStrip">
-        <article><b>이미지 → 영상</b><p>사진 한 장을 시작 장면으로 사용해 제품 광고, 숏폼, 브랜드 영상을 생성합니다.</p></article>
-        <article><b>회원 전용 워크스페이스</b><p>프로젝트, 업로드 이미지, 렌더 작업과 완성 영상을 계정별로 분리합니다.</p></article>
-        <article><b>HOLO 요금제</b><p>필요한 생성 시간만큼 사용하고, 요금제와 잔여 크레딧을 한눈에 확인합니다.</p></article>
+        <article><b>THINK · 아이디어만 이야기하세요</b><p>완성된 프롬프트가 없어도 됩니다. 떠오른 장면, 제품, 분위기나 이야기를 자유롭게 말하거나 입력하세요.</p></article>
+        <article><b>REFINE · HOLO가 생각을 구체화합니다</b><p>장면 · 분위기 · 카메라 · 움직임 · 시작/참조/엔딩 이미지를 이해하고 영상 생성에 필요한 구조로 정리합니다.</p></article>
+        <article><b>CREATE · 영상 언어로 연결합니다</b><p>완성된 프롬프트를 MiniMax H3 렌더 파이프라인에 연결하고 프로젝트와 결과 영상을 회원별로 관리합니다.</p></article>
       </section>
-      <footer class="landingFooter">HOLOGRAM PICTURES AI · AI ASSISTANT HOLO</footer>
+      <footer class="landingFooter">HOLOGRAM PICTURES AI · 생각은 자유롭게. 프롬프트는 HOLO가. · FROM IDEA TO VIDEO INTELLIGENCE</footer>
     </main>`;
 
   document.getElementById("landing-pricing")?.addEventListener("click", () => go("#pricing"));
