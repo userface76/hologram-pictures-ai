@@ -196,3 +196,11 @@ export async function listAssets(userId: string, limit = 50) {
   if (error) throw error;
   return data ?? [];
 }
+
+export async function listRenderJobs(userId: string, limit = 50) {
+  const db = getSupabaseAdmin();
+  if (!db) return [];
+  const { data, error } = await db.from("render_jobs").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(limit);
+  if (error) throw error;
+  return data ?? [];
+}
