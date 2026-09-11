@@ -5,7 +5,7 @@ import "./landing.css";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 const API = import.meta.env.VITE_API_URL || (window.location.hostname === "localhost" ? "http://localhost:8080" : "https://hologramapi-production.up.railway.app");
-const root = document.getElementById("root");
+const root = document.getElementById("root")!;
 const nativeFetch = window.fetch.bind(window);
 
 if (!root) throw new Error("root element not found");
@@ -227,24 +227,19 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 
     const dock = document.createElement("div");
     dock.className = "memberDock";
-
     const home = document.createElement("button");
     home.type = "button";
     home.textContent = "메인";
     home.addEventListener("click", () => go());
-
     const pricing = document.createElement("button");
     pricing.type = "button";
     pricing.textContent = "요금제";
     pricing.addEventListener("click", () => go("#pricing"));
-
     const badge = document.createElement("strong");
     badge.className = `memberRole ${role === "admin" ? "admin" : ""}`;
     badge.textContent = role === "admin" ? "OWNER · ADMIN" : "MEMBER";
-
     const email = document.createElement("span");
     email.textContent = session.user.email || "HOLO MEMBER";
-
     const logout = document.createElement("button");
     logout.type = "button";
     logout.textContent = "로그아웃";
@@ -252,7 +247,6 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
       await supabase.auth.signOut();
       go();
     });
-
     dock.append(home, pricing, badge, email, logout);
     document.body.appendChild(dock);
     await import("./main");
@@ -269,7 +263,6 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
     const { data } = await supabase.auth.getSession();
     const session = data.session;
     installAuthenticatedFetch(session);
-
     const hash = window.location.hash;
     if (hash === "#app") {
       if (session) await enterApp(session);
@@ -287,7 +280,6 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
         go();
       });
     }
-
     supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT" && window.location.hash === "#app") go();
     });
