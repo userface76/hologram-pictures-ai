@@ -150,11 +150,19 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
     await import("./main");
   }
 
-  const { data } = await supabase.auth.getSession();
-  if (data.session) await enterApp(data.session);
-  else renderAuth("login");
+  async function bootstrapAuth() {
+    const { data } = await supabase.auth.getSession();
+    if (data.session) await enterApp(data.session);
+    else renderAuth("login");
 
-  supabase.auth.onAuthStateChange((event) => {
-    if (event === "SIGNED_OUT" && appLoaded) window.location.reload();
+    supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT" && appLoaded) window.location.reload();
+    });
+  }
+
+  void bootstrapAuth().catch((error) => {
+    console.error("HOLO auth bootstrap failed:", error);
+    renderAuth("login");
+    setMessage("로그인 시스템을 초기화하지 못했습니다. 잠시 후 다시 시도해 주세요.", true);
   });
 }
