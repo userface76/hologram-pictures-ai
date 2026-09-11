@@ -1,6 +1,7 @@
 import { createClient, type Session } from "@supabase/supabase-js";
 import "./auth.css";
 import "./landing.css";
+import "./landing-copy.css";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || "";
