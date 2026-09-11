@@ -25,6 +25,10 @@ function publicUrlFor(key: string) {
   return publicBase ? `${publicBase}/${key}` : null;
 }
 
+function tenantPrefix(userId: string) {
+  return `users/${userId.replace(/[^a-zA-Z0-9_-]/g, "")}`;
+}
+
 export function isR2Configured() {
   return Boolean(
     process.env.R2_ACCOUNT_ID &&
@@ -34,7 +38,7 @@ export function isR2Configured() {
   );
 }
 
-export async function uploadImageDataUrl(dataUrl: string, originalName = "image") {
+export async function uploadImageDataUrl(userId: string, dataUrl: string, originalName = "image") {
   const r2 = getR2Client();
   const bucket = process.env.R2_BUCKET;
   if (!r2 || !bucket) throw new Error("R2 is not configured");
@@ -57,7 +61,7 @@ export async function uploadImageDataUrl(dataUrl: string, originalName = "image"
   };
   const ext = extMap[contentType] || "jpg";
   const safeBase = originalName.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9가-힣_-]+/g, "-").slice(0, 60) || "image";
-  const key = `assets/${new Date().toISOString().slice(0, 10)}/${randomUUID()}-${safeBase}.${ext}`;
+  const key = `${tenantPrefix(userId)}/assets/${new Date().toISOString().slice(0, 10)}/${randomUUID()}-${safeBase}.${ext}`;
 
   await r2.send(new PutObjectCommand({
     Bucket: bucket,
@@ -75,7 +79,7 @@ export async function uploadImageDataUrl(dataUrl: string, originalName = "image"
   };
 }
 
-export async function archiveRemoteVideo(sourceUrl: string, jobId: string) {
+export async function archiveRemoteVideo(userId: string, sourceUrl: string, jobId: string) {
   const r2 = getR2Client();
   const bucket = process.env.R2_BUCKET;
   if (!r2 || !bucket) return null;
@@ -84,7 +88,7 @@ export async function archiveRemoteVideo(sourceUrl: string, jobId: string) {
   if (!response.ok) throw new Error(`Could not download generated video (${response.status})`);
   const bytes = Buffer.from(await response.arrayBuffer());
   const contentType = response.headers.get("content-type") || "video/mp4";
-  const key = `renders/${new Date().toISOString().slice(0, 10)}/${jobId}.mp4`;
+  const key = `${tenantPrefix(userId)}/renders/${new Date().toISOString().slice(0, 10)}/${jobId}.mp4`;
 
   await r2.send(new PutObjectCommand({
     Bucket: bucket,
