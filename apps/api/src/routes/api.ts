@@ -12,6 +12,7 @@ import {
   getRenderJob,
   listAssets,
   listProjects,
+  listRenderJobs,
   listVideos,
   recordAsset,
   upsertRenderJob,
@@ -117,7 +118,16 @@ apiRouter.get("/assets", async (req, res, next) => {
 });
 
 apiRouter.get("/models", (_req, res) => res.json({ models: listVideoProviders() }));
-apiRouter.get("/jobs", (req, res) => res.json({ jobs: jobStore.list(userIdOf(req)) }));
+apiRouter.get("/jobs", async (req, res, next) => {
+  try {
+    const userId = userIdOf(req);
+    if (isSupabaseConfigured()) {
+      const persisted = await listRenderJobs(userId);
+      return res.json({ jobs: persisted });
+    }
+    res.json({ jobs: jobStore.list(userId) });
+  } catch (e) { next(e); }
+});
 apiRouter.get("/projects", async (req, res, next) => {
   try { res.json({ projects: await listProjects(userIdOf(req)) }); }
   catch (e) { next(e); }
