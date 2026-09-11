@@ -133,21 +133,61 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
     };
 
     root.innerHTML = "";
+    document.querySelector(".memberDock")?.remove();
+
+    let role = "user";
+    try {
+      const accountResponse = await window.fetch(`${API}/api/account`);
+      if (accountResponse.ok) {
+        const accountData = await accountResponse.json();
+        role = accountData?.account?.profile?.role || "user";
+      }
+    } catch (error) {
+      console.warn("HOLO account badge unavailable:", error);
+    }
+
     const dock = document.createElement("div");
     dock.className = "memberDock";
+
+    const home = document.createElement("button");
+    home.type = "button";
+    home.textContent = "HOLO";
+    home.className = window.location.hash === "#pricing" ? "" : "active";
+    home.addEventListener("click", () => {
+      window.location.hash = "#app";
+      window.location.reload();
+    });
+
+    const pricing = document.createElement("button");
+    pricing.type = "button";
+    pricing.textContent = "요금제";
+    pricing.className = window.location.hash === "#pricing" ? "active" : "";
+    pricing.addEventListener("click", () => {
+      window.location.hash = "#pricing";
+      window.location.reload();
+    });
+
+    const badge = document.createElement("strong");
+    badge.className = `memberRole ${role === "admin" ? "admin" : ""}`;
+    badge.textContent = role === "admin" ? "OWNER · ADMIN" : "MEMBER";
+
     const email = document.createElement("span");
     email.textContent = session.user.email || "HOLO MEMBER";
+
     const logout = document.createElement("button");
     logout.type = "button";
     logout.textContent = "로그아웃";
     logout.addEventListener("click", async () => {
       await supabase.auth.signOut();
+      window.location.hash = "";
       window.location.reload();
     });
-    dock.append(email, logout);
+
+    dock.append(home, pricing, badge, email, logout);
     document.body.appendChild(dock);
 
-    await import("./main");
+    if (window.location.hash === "#pricing") await import("./pricing");
+    else await import("./main");
   }
 
   async function bootstrapAuth() {
