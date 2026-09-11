@@ -43,6 +43,30 @@ function minimaxErrorMessage(status: number, data: Record<string, any>) {
   return `MiniMax H3 create failed (${status}): ${message || JSON.stringify(data)}`;
 }
 
+function buildContent(plan: VideoIntent) {
+  const content: Array<Record<string, any>> = [
+    { type: "text", text: plan.refinedPrompt },
+  ];
+
+  const first = plan.firstFrameImageUrl || (plan.sourceImageRole === "first_frame" ? plan.sourceImageUrl : undefined);
+  const last = plan.lastFrameImageUrl || (plan.sourceImageRole === "last_frame" ? plan.sourceImageUrl : undefined);
+  const reference = plan.referenceImageUrl || (plan.sourceImageRole === "reference_image" ? plan.sourceImageUrl : undefined);
+
+  // MiniMax H3 V2 does not allow reference media to be mixed with first/last frame mode.
+  // When frame controls are present, HOLO has already used the reference image during prompt refinement,
+  // and only the start/end frame controls are sent to H3.
+  if (first || last) {
+    if (first) content.push({ type: "image_url", image_url: { url: first }, role: "first_frame" });
+    if (last) content.push({ type: "image_url", image_url: { url: last }, role: "last_frame" });
+    return { content, frameMode: true };
+  }
+
+  if (reference) {
+    content.push({ type: "image_url", image_url: { url: reference }, role: "reference_image" });
+  }
+  return { content, frameMode: false };
+}
+
 export const minimaxH3Provider: VideoProvider = {
   id: "minimax-h3",
   displayName: "MiniMax H3",
@@ -55,25 +79,13 @@ export const minimaxH3Provider: VideoProvider = {
       return { ...job, status: "processing", progress: 18, providerTaskId: `demo_${job.id}` };
     }
 
-    const content: Array<Record<string, any>> = [
-      { type: "text", text: plan.refinedPrompt },
-    ];
-
-    if (plan.sourceImageUrl) {
-      content.push({
-        type: "image_url",
-        image_url: { url: plan.sourceImageUrl },
-        role: plan.sourceImageRole || "first_frame",
-      });
-    }
-
-    const isFrameMode = Boolean(plan.sourceImageUrl && (plan.sourceImageRole === "first_frame" || plan.sourceImageRole === "last_frame" || !plan.sourceImageRole));
+    const { content, frameMode } = buildContent(plan);
     const payload = {
       model: process.env.MINIMAX_H3_MODEL || "MiniMax-H3",
       content,
       resolution: normalizeResolution(plan.resolution),
       duration: Math.max(4, Math.min(15, Math.round(plan.duration))),
-      ratio: isFrameMode ? "adaptive" : normalizeRatio(plan.aspectRatio),
+      ratio: frameMode ? "adaptive" : normalizeRatio(plan.aspectRatio),
     };
 
     const res = await fetch(`${baseUrl()}${process.env.MINIMAX_H3_CREATE_PATH || "/v2/video_generation"}`, {
