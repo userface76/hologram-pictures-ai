@@ -54,7 +54,7 @@ function renderLanding(session?: Session | null) {
         <nav class="landingNav">
           <button id="landing-pricing" type="button">요금제</button>
           ${loggedIn
-            ? `<span class="memberName">${email}</span><button id="landing-app" class="primaryNav" type="button">HOLO 시작</button><button id="landing-logout" type="button">로그아웃</button>`
+            ? `<button id="landing-studio" type="button">내 작업실</button><span class="memberName">${email}</span><button id="landing-app" class="primaryNav" type="button">HOLO 시작</button><button id="landing-logout" type="button">로그아웃</button>`
             : `<button id="landing-login" type="button">로그인</button><button id="landing-signup" class="primaryNav" type="button">회원가입</button>`}
         </nav>
       </header>
@@ -102,6 +102,7 @@ function renderLanding(session?: Session | null) {
   document.getElementById("landing-login")?.addEventListener("click", () => go("#login"));
   document.getElementById("landing-signup")?.addEventListener("click", () => go("#signup"));
   document.getElementById("landing-app")?.addEventListener("click", () => go("#app"));
+  document.getElementById("landing-studio")?.addEventListener("click", () => go("#studio"));
 }
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
@@ -208,6 +209,20 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
     });
   }
 
+  function restoreStudioIdea() {
+    const text = sessionStorage.getItem("holo_resume_command");
+    if (!text) return;
+    window.setTimeout(() => {
+      const textarea = document.querySelector<HTMLTextAreaElement>(".commandBar textarea");
+      if (!textarea) return;
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+      setter?.call(textarea, text);
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      textarea.focus();
+      sessionStorage.removeItem("holo_resume_command");
+    }, 120);
+  }
+
   async function enterApp(session: Session) {
     if (appLoaded) return;
     appLoaded = true;
@@ -232,6 +247,10 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
     home.type = "button";
     home.textContent = "메인";
     home.addEventListener("click", () => go());
+    const studio = document.createElement("button");
+    studio.type = "button";
+    studio.textContent = "내 작업실";
+    studio.addEventListener("click", () => go("#studio"));
     const pricing = document.createElement("button");
     pricing.type = "button";
     pricing.textContent = "요금제";
@@ -248,9 +267,10 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
       await supabase.auth.signOut();
       go();
     });
-    dock.append(home, pricing, badge, email, logout);
+    dock.append(home, studio, pricing, badge, email, logout);
     document.body.appendChild(dock);
     await import("./main");
+    restoreStudioIdea();
   }
 
   async function renderPricing(session?: Session | null) {
@@ -258,6 +278,17 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
     root.innerHTML = "";
     document.querySelector(".memberDock")?.remove();
     await import("./pricing");
+  }
+
+  async function renderStudio(session?: Session | null) {
+    if (!session) {
+      renderAuth("login");
+      return;
+    }
+    installAuthenticatedFetch(session);
+    root.innerHTML = "";
+    document.querySelector(".memberDock")?.remove();
+    await import("./studio");
   }
 
   async function bootstrapAuth() {
@@ -268,6 +299,8 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
     if (hash === "#app") {
       if (session) await enterApp(session);
       else renderAuth("login");
+    } else if (hash === "#studio") {
+      await renderStudio(session);
     } else if (hash === "#login") {
       renderAuth("login");
     } else if (hash === "#signup") {
@@ -282,7 +315,7 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
       });
     }
     supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT" && window.location.hash === "#app") go();
+      if (event === "SIGNED_OUT" && (window.location.hash === "#app" || window.location.hash === "#studio")) go();
     });
   }
 
