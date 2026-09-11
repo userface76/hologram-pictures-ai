@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
+import "./multi-image.css";
 import "./result.css";
 
-type ImageRole = "first_frame" | "last_frame" | "reference_image";
+type ImageRole = "first_frame" | "reference_image" | "last_frame";
 type Plan = {
   title: string;
   refinedPrompt: string;
@@ -13,8 +14,9 @@ type Plan = {
   resolution: string;
   audio: boolean;
   style?: string;
-  sourceImageUrl?: string;
-  sourceImageRole?: ImageRole;
+  firstFrameImageUrl?: string;
+  referenceImageUrl?: string;
+  lastFrameImageUrl?: string;
   scenes: Array<{ index: number; description: string }>;
 };
 type Job = {
@@ -25,26 +27,38 @@ type Job = {
   providerTaskId?: string;
   error?: string;
 };
-type Asset = { url: string; key: string; size?: number; contentType?: string };
+type Asset = { url: string; key: string; size?: number; contentType?: string; role?: ImageRole | null };
+type ImageSlot = { preview: string | null; asset: Asset | null; uploading: boolean; error: string | null };
 
 const API = import.meta.env.VITE_API_URL || (window.location.hostname === "localhost" ? "http://localhost:8080" : "https://hologramapi-production.up.railway.app");
 const nodeLabels = ["MINIMAX H3", "PROJECTS", "ASSETS", "PROMPT AI", "RENDER", "LIBRARY", "AUDIO", "SCENES"];
 const dataLabels = ["VIDEO", "VOICE", "IMAGE", "PROMPT", "MODEL", "R2", "SUPABASE", "RENDER", "API", "MEMORY", "SCENE", "AUDIO"];
+const imageSlots: Array<{ role: ImageRole; label: string; detail: string; short: string }> = [
+  { role: "first_frame", label: "시작 프레임", detail: "영상의 첫 장면", short: "START" },
+  { role: "reference_image", label: "참조 이미지", detail: "제품 · 인물 · 스타일 참고", short: "REFERENCE" },
+  { role: "last_frame", label: "엔딩 프레임", detail: "영상의 마지막 장면", short: "END" },
+];
+
+function blankSlot(): ImageSlot {
+  return { preview: null, asset: null, uploading: false, error: null };
+}
 
 function App() {
-  const [command, setCommand] = useState("이 제품 사진을 시작 장면으로 사용해서 영화 같은 10초 세로 광고를 만들어줘.");
+  const [command, setCommand] = useState("아이디어를 자유롭게 적어주세요. HOLO가 장면, 분위기, 카메라와 움직임을 영상 프롬프트로 정리합니다.");
   const [plan, setPlan] = useState<Plan | null>(null);
   const [job, setJob] = useState<Job | null>(null);
-  const [status, setStatus] = useState("HOLO가 명령을 기다리고 있습니다");
+  const [status, setStatus] = useState("HOLO가 아이디어를 기다리고 있습니다");
   const [listening, setListening] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [asset, setAsset] = useState<Asset | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageRole, setImageRole] = useState<ImageRole>("first_frame");
+  const [images, setImages] = useState<Record<ImageRole, ImageSlot>>({
+    first_frame: blankSlot(),
+    reference_image: blankSlot(),
+    last_frame: blankSlot(),
+  });
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
-  const fileRef = useRef<HTMLInputElement | null>(null);
+  const firstFileRef = useRef<HTMLInputElement | null>(null);
+  const referenceFileRef = useRef<HTMLInputElement | null>(null);
+  const lastFileRef = useRef<HTMLInputElement | null>(null);
 
   const orbitNodes = useMemo(() => nodeLabels.map((label, i) => ({ label, angle: (360 / nodeLabels.length) * i })), []);
   const globePoints = useMemo(() => Array.from({ length: 84 }, (_, i) => {
@@ -54,17 +68,38 @@ function App() {
     return { latitude, longitude, label: i % 7 === 0 ? dataLabels[(i / 7) % dataLabels.length | 0] : "" };
   }), []);
 
+  function refFor(role: ImageRole) {
+    if (role === "first_frame") return firstFileRef;
+    if (role === "reference_image") return referenceFileRef;
+    return lastFileRef;
+  }
+
+  const uploadingImage = imageSlots.some(({ role }) => images[role].uploading);
+  const imageNotReady = imageSlots.some(({ role }) => Boolean(images[role].preview && !images[role].asset));
+  const imageCount = imageSlots.filter(({ role }) => Boolean(images[role].asset?.url)).length;
+  const hasFrameControl = Boolean(images.first_frame.asset?.url || images.last_frame.asset?.url);
+  const hasReference = Boolean(images.reference_image.asset?.url);
+
+  function mediaPayload() {
+    return {
+      firstFrameUrl: images.first_frame.asset?.url,
+      referenceImageUrl: images.reference_image.asset?.url,
+      lastFrameUrl: images.last_frame.asset?.url,
+    };
+  }
+
   async function analyze(autoRender = false) {
     if (uploadingImage) {
       setStatus("사진 업로드가 끝난 뒤 다시 시도해 주세요");
       return;
     }
-    if (imagePreview && !asset) {
-      setStatus(uploadError ? `사진 업로드 실패 · ${uploadError}` : "사진 업로드가 아직 완료되지 않았습니다");
+    if (imageNotReady) {
+      const firstError = imageSlots.map(({ role }) => images[role].error).find(Boolean);
+      setStatus(firstError ? `사진 업로드 실패 · ${firstError}` : "사진 업로드가 아직 완료되지 않았습니다");
       return;
     }
     if (autoRender) setIsSubmitting(true);
-    setStatus(autoRender ? "HOLO가 영상 생성 파이프라인을 시작하는 중…" : "HOLO가 명령을 분석하는 중…");
+    setStatus(autoRender ? "HOLO가 영상 생성 파이프라인을 시작하는 중…" : "HOLO가 아이디어와 이미지를 분석하는 중…");
 
     try {
       const r = await fetch(`${API}/api/${autoRender ? "render" : "command"}`, {
@@ -73,8 +108,7 @@ function App() {
         body: JSON.stringify({
           command,
           autoRender,
-          imageUrl: asset?.url,
-          imageRole,
+          images: mediaPayload(),
         }),
       });
       const d = await r.json();
@@ -84,7 +118,7 @@ function App() {
         setJob(d.job);
         setStatus(`HOLO 렌더 시작 · ${d.job.status} · ${d.job.progress}%`);
       } else {
-        setStatus(`HOLO 분석 완료 · ${d.source === "astra" ? "GPT-5.6 Sol" : "로컬 파서"}`);
+        setStatus(`HOLO 프롬프트 설계 완료 · ${d.source === "astra" ? "GPT-5.6 Sol" : "로컬 파서"}`);
       }
     } catch (e: any) {
       setStatus(`연결 오류 · ${e.message}`);
@@ -133,7 +167,7 @@ function App() {
     rec.onresult = (e: any) => {
       const text = e.results[0][0].transcript;
       setCommand(text);
-      setStatus("HOLO가 음성 명령을 받았습니다");
+      setStatus("HOLO가 아이디어를 들었습니다. 프롬프트로 정리할 준비가 됐습니다.");
     };
     rec.onend = () => setListening(false);
     rec.onerror = () => { setListening(false); setStatus("음성 인식 오류"); };
@@ -149,7 +183,7 @@ function App() {
     });
   }
 
-  async function chooseImage(file?: File) {
+  async function chooseImage(role: ImageRole, file?: File) {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       setStatus("이미지 파일만 업로드할 수 있습니다");
@@ -160,44 +194,56 @@ function App() {
       return;
     }
 
-    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    const previousPreview = images[role].preview;
+    if (previousPreview) URL.revokeObjectURL(previousPreview);
     const localUrl = URL.createObjectURL(file);
-    setImagePreview(localUrl);
-    setAsset(null);
-    setUploadError(null);
-    setUploadingImage(true);
-    setStatus("HOLO가 사진을 Cloudflare R2에 업로드하는 중…");
+    setImages((prev) => ({
+      ...prev,
+      [role]: { preview: localUrl, asset: null, uploading: true, error: null },
+    }));
+    const label = imageSlots.find((slot) => slot.role === role)?.label || "사진";
+    setStatus(`HOLO가 ${label}을 Cloudflare R2에 업로드하는 중…`);
 
     try {
       const dataUrl = await fileToDataUrl(file);
       const r = await fetch(`${API}/api/assets/upload`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: file.name, dataUrl }),
+        body: JSON.stringify({ name: file.name, dataUrl, role }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "업로드 실패");
       if (!d.asset?.url) throw new Error("R2 공개 URL을 받지 못했습니다. R2_PUBLIC_BASE_URL을 확인해 주세요.");
-      setAsset(d.asset);
-      setUploadError(null);
-      setStatus("사진 준비 완료 · HOLO에게 움직임을 말해 주세요");
+      setImages((prev) => ({
+        ...prev,
+        [role]: { ...prev[role], asset: d.asset, uploading: false, error: null },
+      }));
+      setStatus(`${label} 준비 완료 · 다른 이미지를 추가하거나 아이디어를 입력하세요`);
     } catch (e: any) {
       const message = e?.message || "알 수 없는 업로드 오류";
-      setUploadError(message);
-      setAsset(null);
-      setStatus(`사진 업로드 실패 · ${message}`);
-    } finally {
-      setUploadingImage(false);
+      setImages((prev) => ({
+        ...prev,
+        [role]: { ...prev[role], asset: null, uploading: false, error: message },
+      }));
+      setStatus(`${label} 업로드 실패 · ${message}`);
     }
   }
 
-  function clearImage() {
-    if (imagePreview) URL.revokeObjectURL(imagePreview);
-    setImagePreview(null);
-    setAsset(null);
-    setUploadError(null);
-    if (fileRef.current) fileRef.current.value = "";
+  function clearImage(role: ImageRole) {
+    const preview = images[role].preview;
+    if (preview) URL.revokeObjectURL(preview);
+    setImages((prev) => ({ ...prev, [role]: blankSlot() }));
+    const ref = refFor(role);
+    if (ref.current) ref.current.value = "";
     setStatus("사진이 제거되었습니다");
+  }
+
+  function selectImage(role: ImageRole) {
+    const ref = refFor(role);
+    if (ref.current) {
+      ref.current.value = "";
+      ref.current.click();
+    }
   }
 
   function handlePointerMove(e: React.MouseEvent<HTMLElement>) {
@@ -207,7 +253,6 @@ function App() {
   }
 
   const activeRendering = Boolean(job && job.status !== "completed" && job.status !== "failed");
-  const imageNotReady = Boolean(imagePreview && !asset);
 
   return (
     <main
@@ -221,7 +266,7 @@ function App() {
 
       <header className="topbar">
         <div className="brand"><b>HOLOGRAM</b> PICTURES AI <span>HOLO</span></div>
-        <small>CONVERSATIONAL AI VIDEO OS · CONNECTED DATA WORLD · V0.5</small>
+        <small>FROM IDEA TO VIDEO INTELLIGENCE · CONVERSATIONAL AI VIDEO OS · V0.6</small>
       </header>
 
       <section className="worldStage">
@@ -267,56 +312,80 @@ function App() {
         </div>
 
         <div className="worldCaption">
-          <strong>CONNECTED INTELLIGENCE</strong>
-          <span>데이터 · 모델 · 이미지 · 음성 · 렌더가 하나의 초연결 영상 시스템으로 움직입니다.</span>
+          <strong>FROM IDEA TO VIDEO INTELLIGENCE</strong>
+          <span>생각을 이해하고 · 질문하고 · 정리해 영상 생성 프롬프트로 연결합니다.</span>
         </div>
       </section>
 
       <section className="console">
         <div className="status"><i className={activeRendering ? "busy" : ""} /> {status}</div>
 
-        <div className="assetAndCommand">
-          <div className={`assetDock ${imagePreview ? "hasImage" : ""}`}>
-            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" hidden onChange={(e) => void chooseImage(e.target.files?.[0])} />
-            {!imagePreview ? (
-              <button className="uploadZone" onClick={() => fileRef.current?.click()} disabled={uploadingImage || isSubmitting}>
-                <span className="uploadPlus">＋</span>
-                <strong>사진 업로드</strong>
-                <small>JPG · PNG · WEBP · 최대 30MB</small>
-              </button>
-            ) : (
-              <div className="previewCard">
-                <img src={imagePreview} alt="업로드한 참조 이미지" />
-                <div className="previewShade" />
-                <div className="previewInfo">
-                  <strong>{uploadingImage ? "업로드 중…" : asset ? "사진 준비 완료" : "사진 업로드 실패"}</strong>
-                  {uploadError && <small>{uploadError}</small>}
-                  <select value={imageRole} onChange={(e) => setImageRole(e.target.value as ImageRole)} disabled={uploadingImage || isSubmitting}>
-                    <option value="first_frame">첫 프레임</option>
-                    <option value="reference_image">참조 이미지</option>
-                    <option value="last_frame">마지막 프레임</option>
-                  </select>
-                  <div className="previewActions">
-                    <button onClick={() => fileRef.current?.click()} disabled={uploadingImage || isSubmitting}>다시 선택</button>
-                    <button onClick={clearImage} disabled={uploadingImage || isSubmitting}>삭제</button>
-                  </div>
+        <div className="assetAndCommand tripleStudio">
+          <div className="assetDeck">
+            {imageSlots.map(({ role, label, detail, short }) => {
+              const slot = images[role];
+              const ref = refFor(role);
+              return (
+                <div key={role} className={`assetDock imageSlot ${slot.preview ? "hasImage" : ""}`}>
+                  <input
+                    ref={ref}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                    hidden
+                    onChange={(e) => void chooseImage(role, e.target.files?.[0])}
+                  />
+                  {!slot.preview ? (
+                    <button className="uploadZone" onClick={() => selectImage(role)} disabled={slot.uploading || isSubmitting}>
+                      <span className="slotCode">{short}</span>
+                      <span className="uploadPlus">＋</span>
+                      <strong>{label}</strong>
+                      <small>{detail}</small>
+                    </button>
+                  ) : (
+                    <div className="previewCard">
+                      <img src={slot.preview} alt={label} />
+                      <div className="previewShade" />
+                      <div className="slotCode onImage">{short}</div>
+                      <div className="previewInfo">
+                        <strong>{slot.uploading ? `${label} 업로드 중…` : slot.asset ? `${label} 준비 완료` : `${label} 업로드 실패`}</strong>
+                        {slot.error && <small>{slot.error}</small>}
+                        <div className="previewActions">
+                          <button onClick={() => selectImage(role)} disabled={slot.uploading || isSubmitting}>교체</button>
+                          <button onClick={() => clearImage(role)} disabled={slot.uploading || isSubmitting}>삭제</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              );
+            })}
+          </div>
+
+          <div className="mediaRule">
+            <b>{imageCount}/3 IMAGE INPUTS</b>
+            <span>
+              {hasFrameControl && hasReference
+                ? "시작/엔딩 프레임은 MiniMax H3 프레임 제어에 사용되고, 참조 이미지는 HOLO가 먼저 분석해 프롬프트의 제품·인물·스타일 일관성에 반영합니다."
+                : hasFrameControl
+                  ? "시작 또는 엔딩 프레임을 넣으면 H3가 해당 프레임을 기준으로 장면을 연결합니다."
+                  : hasReference
+                    ? "참조 이미지만 넣으면 MiniMax H3 Reference-to-Video 입력으로 직접 전달됩니다."
+                    : "사진 없이 아이디어만으로 시작하거나, 필요한 이미지 역할만 선택해서 올릴 수 있습니다."}
+            </span>
           </div>
 
           <div className="commandPanel">
             <div className="commandBar">
-              <button className={listening ? "mic active" : "mic"} onClick={voice} disabled={isSubmitting}>◉</button>
-              <textarea value={command} onChange={(e) => setCommand(e.target.value)} placeholder="HOLO에게 만들 영상을 말하거나 입력하세요." disabled={isSubmitting} />
-              <button onClick={() => void analyze(false)} disabled={isSubmitting || uploadingImage || imageNotReady}>분석</button>
+              <button className={listening ? "mic active" : "mic"} onClick={voice} disabled={isSubmitting} title="말해서 아이디어 입력">◉</button>
+              <textarea value={command} onChange={(e) => setCommand(e.target.value)} placeholder="아이디어를 자유롭게 말하거나 입력하세요. HOLO가 영상 프롬프트로 정리합니다." disabled={isSubmitting} />
+              <button onClick={() => void analyze(false)} disabled={isSubmitting || uploadingImage || imageNotReady}>HOLO 정리</button>
               <button className="primary" onClick={() => void analyze(true)} disabled={isSubmitting || uploadingImage || imageNotReady}>
                 {uploadingImage ? "사진 업로드 중…" : imageNotReady ? "사진 확인 필요" : isSubmitting ? "준비 중…" : "영상 만들기"}
               </button>
             </div>
             <div className="quickHints">
-              <span>예: “이 사진을 시작 장면으로 6초 광고 영상 만들어줘”</span>
-              <span>{imageNotReady ? "사진 업로드가 성공해야 영상 만들기를 시작할 수 있습니다." : "HOLO가 프롬프트 · 모델 · 비율 · 렌더를 자동 연결합니다."}</span>
+              <span>예: “한강에서 달리다가 편의점에서 라면을 먹는 10초 세로 영상”</span>
+              <span>{imageNotReady ? "모든 선택 사진의 업로드가 완료되어야 시작할 수 있습니다." : "생각은 자유롭게. 프롬프트는 HOLO가."}</span>
             </div>
           </div>
         </div>
@@ -327,7 +396,13 @@ function App() {
             <div><label>MODEL</label><strong>{plan.model}</strong></div>
             <div><label>FORMAT</label><strong>{plan.duration}s · {plan.aspectRatio} · {plan.resolution}</strong></div>
             <div><label>AUDIO</label><strong>{plan.audio ? "ON" : "OFF"}</strong></div>
-            {asset?.url && <div className="wide"><label>IMAGE INPUT</label><strong>{imageRole.replace("_", " ")}</strong></div>}
+            {imageCount > 0 && (
+              <div className="wide"><label>IMAGE INPUTS</label><strong>{[
+                images.first_frame.asset && "START",
+                images.reference_image.asset && "REFERENCE",
+                images.last_frame.asset && "END",
+              ].filter(Boolean).join(" · ")}</strong></div>
+            )}
             <p>{plan.refinedPrompt}</p>
           </div>
         )}
@@ -348,7 +423,7 @@ function App() {
             {job.status === "failed" && (
               <div className="renderFailure">
                 <strong>영상 생성에 실패했습니다</strong>
-                <p>{job.error || "MiniMax가 이 작업을 완료하지 못했습니다. 같은 사진과 프롬프트로 다시 시도하거나 오류 로그를 확인해 주세요."}</p>
+                <p>{job.error || "MiniMax가 이 작업을 완료하지 못했습니다. 같은 이미지와 프롬프트로 다시 시도하거나 오류 로그를 확인해 주세요."}</p>
                 <button onClick={() => void analyze(true)} disabled={isSubmitting || imageNotReady}>같은 설정으로 다시 만들기</button>
               </div>
             )}
@@ -370,14 +445,14 @@ function App() {
         <div className="loadingOverlay">
           <div className="loadingCard">
             <div className="holoLoader"><span /><span /><span /></div>
-            <strong>HOLO가 영상을 준비하고 있습니다</strong>
-            <p>{asset ? "사진과 프롬프트를 MiniMax H3 렌더 파이프라인에 연결하는 중…" : "프롬프트를 분석하고 영상 렌더 작업을 생성하는 중…"}</p>
-            <div className="loadingSteps"><i className="on">COMMAND</i><i className="on">HOLO CORE</i><i>MINIMAX H3</i><i>RENDER</i></div>
+            <strong>HOLO가 생각을 영상 언어로 정리하고 있습니다</strong>
+            <p>{imageCount ? "이미지 역할과 아이디어를 분석해 MiniMax H3 렌더 파이프라인에 연결하는 중…" : "아이디어를 영상 생성 프롬프트로 설계하고 렌더 작업을 준비하는 중…"}</p>
+            <div className="loadingSteps"><i className="on">IDEA</i><i className="on">HOLO CORE</i><i>PROMPT</i><i>MINIMAX H3</i></div>
           </div>
         </div>
       )}
 
-      <footer>HOLOGRAM PICTURES AI — 말하면, 영상이 된다. · AI ASSISTANT: HOLO</footer>
+      <footer>HOLOGRAM PICTURES AI — 생각은 자유롭게. 프롬프트는 HOLO가. · FROM IDEA TO VIDEO INTELLIGENCE</footer>
     </main>
   );
 }
