@@ -1,13 +1,20 @@
 import { createClient, type Session } from "@supabase/supabase-js";
 import "./auth.css";
+import "./landing.css";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 const API = import.meta.env.VITE_API_URL || (window.location.hostname === "localhost" ? "http://localhost:8080" : "https://hologramapi-production.up.railway.app");
-const root = document.getElementById("root")!;
+const root = document.getElementById("root");
 const nativeFetch = window.fetch.bind(window);
 
 if (!root) throw new Error("root element not found");
+
+function go(hash = "") {
+  if (hash) window.location.hash = hash;
+  else history.replaceState(null, "", window.location.pathname + window.location.search);
+  window.location.reload();
+}
 
 function authShell(content: string) {
   root.innerHTML = `
@@ -33,6 +40,69 @@ function renderConfigError() {
   `);
 }
 
+function renderLanding(session?: Session | null) {
+  const loggedIn = Boolean(session);
+  const email = session?.user?.email || "";
+  document.querySelector(".memberDock")?.remove();
+  root.innerHTML = `
+    <main class="landingPage">
+      <div class="landingBackdrop"></div>
+      <div class="landingGrid"></div>
+      <header class="landingHeader">
+        <div class="landingBrand"><b>HOLOGRAM</b> PICTURES AI <span>HOLO</span></div>
+        <nav class="landingNav">
+          <button id="landing-pricing" type="button">요금제</button>
+          ${loggedIn
+            ? `<span class="memberName">${email}</span><button id="landing-app" class="primaryNav" type="button">HOLO 시작</button><button id="landing-logout" type="button">로그아웃</button>`
+            : `<button id="landing-login" type="button">로그인</button><button id="landing-signup" class="primaryNav" type="button">회원가입</button>`}
+        </nav>
+      </header>
+
+      <section class="landingHero">
+        <div class="landingCopy">
+          <span class="landingEyebrow">HYPER-CONNECTED VISUAL INTELLIGENCE</span>
+          <h1>말하면,<span>영상이 된다.</span></h1>
+          <p>HOLO가 프롬프트를 이해하고 이미지와 아이디어를 영화 같은 영상으로 연결합니다. 회원별 프로젝트와 영상은 안전하게 분리되어 관리됩니다.</p>
+          <div class="landingActions">
+            <button id="hero-start" class="heroPrimary" type="button">${loggedIn ? "HOLO 시작하기" : "무료로 시작하기"}</button>
+            <button id="hero-pricing" type="button">요금제 보기</button>
+          </div>
+          <div class="landingMeta">
+            <div><strong>MiniMax H3</strong>VIDEO ENGINE</div>
+            <div><strong>HOLO</strong>AI ASSISTANT</div>
+            <div><strong>R2 + Supabase</strong>SECURE WORKSPACE</div>
+          </div>
+        </div>
+
+        <div class="worldStage" aria-hidden="true">
+          <div class="worldPlane"></div>
+          <div class="mobileGlobe"></div>
+          <div class="networkLine line1"></div><div class="networkLine line2"></div><div class="networkLine line3"></div><div class="networkLine line4"></div>
+          <i class="networkNode node1" data-label="PROJECTS"></i>
+          <i class="networkNode node2" data-label="RENDER"></i>
+          <i class="networkNode node3" data-label="ASSETS"></i>
+          <i class="networkNode node4" data-label="LIBRARY"></i>
+          <i class="networkNode node5" data-label="PROMPT AI"></i>
+          <div class="worldCore"><strong>HOLO</strong><span>HOLOGRAM CORE</span></div>
+        </div>
+      </section>
+
+      <section class="landingStrip">
+        <article><b>이미지 → 영상</b><p>사진 한 장을 시작 장면으로 사용해 제품 광고, 숏폼, 브랜드 영상을 생성합니다.</p></article>
+        <article><b>회원 전용 워크스페이스</b><p>프로젝트, 업로드 이미지, 렌더 작업과 완성 영상을 계정별로 분리합니다.</p></article>
+        <article><b>HOLO 요금제</b><p>필요한 생성 시간만큼 사용하고, 요금제와 잔여 크레딧을 한눈에 확인합니다.</p></article>
+      </section>
+      <footer class="landingFooter">HOLOGRAM PICTURES AI · AI ASSISTANT HOLO</footer>
+    </main>`;
+
+  document.getElementById("landing-pricing")?.addEventListener("click", () => go("#pricing"));
+  document.getElementById("hero-pricing")?.addEventListener("click", () => go("#pricing"));
+  document.getElementById("hero-start")?.addEventListener("click", () => go(loggedIn ? "#app" : "#signup"));
+  document.getElementById("landing-login")?.addEventListener("click", () => go("#login"));
+  document.getElementById("landing-signup")?.addEventListener("click", () => go("#signup"));
+  document.getElementById("landing-app")?.addEventListener("click", () => go("#app"));
+}
+
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   renderConfigError();
 } else {
@@ -41,6 +111,21 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
   });
 
   let appLoaded = false;
+
+  function installAuthenticatedFetch(session?: Session | null) {
+    if (!session) {
+      window.fetch = nativeFetch;
+      return;
+    }
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (!url.startsWith(API)) return nativeFetch(input, init);
+      const { data } = await supabase.auth.getSession();
+      const headers = new Headers(init?.headers || (input instanceof Request ? input.headers : undefined));
+      if (data.session?.access_token) headers.set("Authorization", `Bearer ${data.session.access_token}`);
+      return nativeFetch(input, { ...init, headers });
+    };
+  }
 
   function setMessage(message: string, error = false) {
     const el = document.getElementById("auth-message");
@@ -58,6 +143,7 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 
   function renderAuth(mode: "login" | "signup" = "login") {
     const signup = mode === "signup";
+    document.querySelector(".memberDock")?.remove();
     authShell(`
       <div class="authCopy">
         <h1>${signup ? "HOLO 회원가입" : "HOLO 로그인"}</h1>
@@ -74,11 +160,13 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
         <button id="auth-submit" class="authPrimary" data-mode="${mode}" type="submit">${signup ? "회원가입" : "로그인"}</button>
       </form>
       <div id="auth-message" class="authMessage"></div>
-      <p class="authPolicy">계정 인증 정보는 Supabase Auth로 처리되며, HOLO의 영상 생성 API는 로그인 토큰이 있어야 사용할 수 있습니다.</p>
+      <p class="authPolicy">안전한 계정 인증을 통해 HOLO 서비스를 이용합니다. 영상 생성과 개인 보관함은 로그인한 회원에게만 제공됩니다.</p>
+      <button id="auth-home" class="authHome" type="button">메인으로 돌아가기</button>
     `);
 
     document.getElementById("tab-login")?.addEventListener("click", () => renderAuth("login"));
     document.getElementById("tab-signup")?.addEventListener("click", () => renderAuth("signup"));
+    document.getElementById("auth-home")?.addEventListener("click", () => go());
     document.getElementById("auth-form")?.addEventListener("submit", async (event) => {
       event.preventDefault();
       const email = (document.getElementById("auth-email") as HTMLInputElement).value.trim();
@@ -122,16 +210,7 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
   async function enterApp(session: Session) {
     if (appLoaded) return;
     appLoaded = true;
-
-    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-      if (!url.startsWith(API)) return nativeFetch(input, init);
-      const { data } = await supabase.auth.getSession();
-      const headers = new Headers(init?.headers || (input instanceof Request ? input.headers : undefined));
-      if (data.session?.access_token) headers.set("Authorization", `Bearer ${data.session.access_token}`);
-      return nativeFetch(input, { ...init, headers });
-    };
-
+    installAuthenticatedFetch(session);
     root.innerHTML = "";
     document.querySelector(".memberDock")?.remove();
 
@@ -151,21 +230,13 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 
     const home = document.createElement("button");
     home.type = "button";
-    home.textContent = "HOLO";
-    home.className = window.location.hash === "#pricing" ? "" : "active";
-    home.addEventListener("click", () => {
-      window.location.hash = "#app";
-      window.location.reload();
-    });
+    home.textContent = "메인";
+    home.addEventListener("click", () => go());
 
     const pricing = document.createElement("button");
     pricing.type = "button";
     pricing.textContent = "요금제";
-    pricing.className = window.location.hash === "#pricing" ? "active" : "";
-    pricing.addEventListener("click", () => {
-      window.location.hash = "#pricing";
-      window.location.reload();
-    });
+    pricing.addEventListener("click", () => go("#pricing"));
 
     const badge = document.createElement("strong");
     badge.className = `memberRole ${role === "admin" ? "admin" : ""}`;
@@ -179,30 +250,51 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
     logout.textContent = "로그아웃";
     logout.addEventListener("click", async () => {
       await supabase.auth.signOut();
-      window.location.hash = "";
-      window.location.reload();
+      go();
     });
 
     dock.append(home, pricing, badge, email, logout);
     document.body.appendChild(dock);
+    await import("./main");
+  }
 
-    if (window.location.hash === "#pricing") await import("./pricing");
-    else await import("./main");
+  async function renderPricing(session?: Session | null) {
+    installAuthenticatedFetch(session);
+    root.innerHTML = "";
+    document.querySelector(".memberDock")?.remove();
+    await import("./pricing");
   }
 
   async function bootstrapAuth() {
     const { data } = await supabase.auth.getSession();
-    if (data.session) await enterApp(data.session);
-    else renderAuth("login");
+    const session = data.session;
+    installAuthenticatedFetch(session);
+
+    const hash = window.location.hash;
+    if (hash === "#app") {
+      if (session) await enterApp(session);
+      else renderAuth("login");
+    } else if (hash === "#login") {
+      renderAuth("login");
+    } else if (hash === "#signup") {
+      renderAuth("signup");
+    } else if (hash === "#pricing") {
+      await renderPricing(session);
+    } else {
+      renderLanding(session);
+      document.getElementById("landing-logout")?.addEventListener("click", async () => {
+        await supabase.auth.signOut();
+        go();
+      });
+    }
 
     supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT" && appLoaded) window.location.reload();
+      if (event === "SIGNED_OUT" && window.location.hash === "#app") go();
     });
   }
 
   void bootstrapAuth().catch((error) => {
     console.error("HOLO auth bootstrap failed:", error);
-    renderAuth("login");
-    setMessage("로그인 시스템을 초기화하지 못했습니다. 잠시 후 다시 시도해 주세요.", true);
+    renderLanding(null);
   });
 }
