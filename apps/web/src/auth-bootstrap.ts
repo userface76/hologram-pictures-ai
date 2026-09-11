@@ -4,7 +4,7 @@ import "./auth.css";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 const API = import.meta.env.VITE_API_URL || (window.location.hostname === "localhost" ? "http://localhost:8080" : "https://hologramapi-production.up.railway.app");
-const root = document.getElementById("root");
+const root = document.getElementById("root")!;
 const nativeFetch = window.fetch.bind(window);
 
 if (!root) throw new Error("root element not found");
@@ -147,7 +147,7 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
     dock.append(email, logout);
     document.body.appendChild(dock);
 
-    await import("./main.tsx");
+    await import("./main");
   }
 
   const { data } = await supabase.auth.getSession();
