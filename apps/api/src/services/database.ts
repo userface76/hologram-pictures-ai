@@ -1,4 +1,4 @@
-import type { RenderJob, VideoIntent } from "../core/types.js";
+import type { ImageRole, RenderJob, VideoIntent } from "../core/types.js";
 import { getSupabaseAdmin } from "../lib/supabase.js";
 
 export async function ensureUserAccount(userId: string, email?: string | null) {
@@ -32,28 +32,47 @@ export async function getAccountSummary(userId: string) {
   return { profile, wallet };
 }
 
-export async function createProject(userId: string, plan: VideoIntent) {
-  const db = getSupabaseAdmin();
-  if (!db) return null;
-  const { data, error } = await db.from("projects").insert({
+function projectRow(userId: string, plan: VideoIntent) {
+  return {
     user_id: userId,
     title: plan.title,
     status: "active",
     selected_model: plan.model,
     user_request: plan.userRequest,
+    first_frame_url: plan.firstFrameImageUrl ?? null,
+    reference_image_url: plan.referenceImageUrl ?? null,
+    last_frame_url: plan.lastFrameImageUrl ?? null,
     metadata: {
       aspect_ratio: plan.aspectRatio,
       duration: plan.duration,
       resolution: plan.resolution,
       audio: plan.audio,
       style: plan.style ?? null,
+      first_frame_url: plan.firstFrameImageUrl ?? null,
+      reference_image_url: plan.referenceImageUrl ?? null,
+      last_frame_url: plan.lastFrameImageUrl ?? null,
       source_image_url: plan.sourceImageUrl ?? null,
       source_image_role: plan.sourceImageRole ?? null,
       scenes: plan.scenes,
     },
-  }).select("id,user_id,title,status,created_at").single();
-  if (error) throw error;
-  return data;
+  };
+}
+
+export async function createProject(userId: string, plan: VideoIntent) {
+  const db = getSupabaseAdmin();
+  if (!db) return null;
+
+  const row = projectRow(userId, plan);
+  let result = await db.from("projects").insert(row).select("id,user_id,title,status,created_at").single();
+
+  // Allows the app to keep working before migration 003 is manually applied in Supabase.
+  if (result.error && String(result.error.message || "").includes("first_frame_url")) {
+    const { first_frame_url: _first, reference_image_url: _reference, last_frame_url: _last, ...legacyRow } = row;
+    result = await db.from("projects").insert(legacyRow).select("id,user_id,title,status,created_at").single();
+  }
+
+  if (result.error) throw result.error;
+  return result.data;
 }
 
 export async function upsertRenderJob(userId: string, job: RenderJob) {
@@ -124,19 +143,34 @@ export async function createVideoRecord(userId: string, job: RenderJob, plan?: V
   return data;
 }
 
-export async function recordAsset(userId: string, asset: { key: string; url: string | null; size?: number; contentType?: string }, originalName?: string) {
+export async function recordAsset(
+  userId: string,
+  asset: { key: string; url: string | null; size?: number; contentType?: string },
+  originalName?: string,
+  role?: ImageRole,
+) {
   const db = getSupabaseAdmin();
   if (!db) return null;
-  const { data, error } = await db.from("assets").insert({
+
+  const row = {
     user_id: userId,
     object_key: asset.key,
     public_url: asset.url,
     original_name: originalName ?? null,
     content_type: asset.contentType ?? null,
     size_bytes: asset.size ?? null,
-  }).select().single();
-  if (error) throw error;
-  return data;
+    role: role ?? null,
+  };
+  let result = await db.from("assets").insert(row).select().single();
+
+  // Backward-compatible until migration 003 is applied.
+  if (result.error && String(result.error.message || "").includes("role")) {
+    const { role: _role, ...legacyRow } = row;
+    result = await db.from("assets").insert(legacyRow).select().single();
+  }
+
+  if (result.error) throw result.error;
+  return result.data;
 }
 
 export async function listProjects(userId: string, limit = 30) {
