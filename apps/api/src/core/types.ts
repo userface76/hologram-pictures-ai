@@ -18,6 +18,7 @@ export type VideoIntent = {
 
 export type RenderJob = {
   id: string;
+  userId?: string;
   projectId?: string;
   provider: string;
   model: string;
