@@ -1,12 +1,15 @@
 import "./director-mode.css";
 
+type CandidateId = "stable" | "cinematic" | "user_based";
+
 type Candidate = {
-  id: "stable" | "cinematic";
+  id: CandidateId;
   label: string;
   summary: string;
   reason: string;
   recommended: boolean;
   score: number;
+  preservationScore?: number;
   skills: string[];
   prompt: string;
 };
@@ -52,7 +55,7 @@ function setReactTextareaValue(value: string) {
   const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
   if (setter) setter.call(textarea, value);
   else textarea.value = value;
-  textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  textarea.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: value }));
   textarea.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
@@ -67,21 +70,33 @@ function removeSelectedChip() {
   document.getElementById("holo-director-selected")?.remove();
 }
 
+function optionCode(id: CandidateId) {
+  if (id === "stable") return "OPTION A · CONTROL";
+  if (id === "cinematic") return "OPTION B · IMPACT";
+  return "OPTION C · USER BASED";
+}
+
+function optionShort(id: CandidateId) {
+  if (id === "stable") return "A · CONTROL";
+  if (id === "cinematic") return "B · IMPACT";
+  return "C · USER BASED";
+}
+
 function showSelectedChip(candidate: Candidate) {
   removeSelectedChip();
   const chip = document.createElement("div");
   chip.id = "holo-director-selected";
-  chip.className = "holoDirectorSelected";
+  chip.className = `holoDirectorSelected ${candidate.id === "user_based" ? "userBased" : ""}`;
   chip.innerHTML = `
     <div>
-      <small>HOLO DIRECTOR SELECTED</small>
+      <small>HOLO DIRECTOR SELECTED · ${optionShort(candidate.id)}</small>
       <strong>${escapeHtml(candidate.label)}</strong>
       <span>${escapeHtml(candidate.summary)}</span>
     </div>
     <button type="button">다른 안 보기</button>
   `;
   chip.querySelector("button")?.addEventListener("click", () => {
-    if (lastCandidates.length) showDirectorOverlay({ candidates: lastCandidates } as DirectorResponse, lastPayload);
+    if (lastCandidates.length) showDirectorOverlay({ candidates: lastCandidates, plan: {} } as DirectorResponse, lastPayload);
   });
   document.body.appendChild(chip);
 }
@@ -114,16 +129,20 @@ function escapeHtml(value: unknown) {
 
 function cardHtml(candidate: Candidate) {
   const skills = (candidate.skills || []).slice(0, 6).map((skill) => `<span>${escapeHtml(skill)}</span>`).join("");
+  const preservation = candidate.id === "user_based" && typeof candidate.preservationScore === "number"
+    ? `<div class="holoDirectorPreserve"><b>${Math.round(candidate.preservationScore)}%</b><span>원문 유지도</span></div>`
+    : "";
   return `
-    <article class="holoDirectorCard ${candidate.recommended ? "recommended" : ""} ${selectedCandidate?.id === candidate.id ? "selected" : ""}" data-id="${candidate.id}">
+    <article class="holoDirectorCard ${candidate.id === "user_based" ? "userBased" : ""} ${candidate.recommended ? "recommended" : ""} ${selectedCandidate?.id === candidate.id ? "selected" : ""}" data-id="${candidate.id}">
       <div class="holoDirectorCardTop">
         <div>
-          <small>${candidate.id === "stable" ? "OPTION A · CONTROL" : "OPTION B · IMPACT"}</small>
+          <small>${optionCode(candidate.id)}</small>
           <h3>${escapeHtml(candidate.label)}</h3>
         </div>
         <div class="holoDirectorScore"><b>${Math.round(candidate.score)}</b><span>/100</span></div>
       </div>
       ${candidate.recommended ? '<div class="holoDirectorRecommend">★ HOLO 추천</div>' : ""}
+      ${preservation}
       <p class="holoDirectorSummary">${escapeHtml(candidate.summary)}</p>
       <p class="holoDirectorReason">${escapeHtml(candidate.reason)}</p>
       <div class="holoDirectorSkills">${skills}</div>
@@ -147,9 +166,9 @@ function showDirectorOverlay(data: DirectorResponse, payload: CommandPayload | n
     <section class="holoDirectorModal" role="dialog" aria-modal="true" aria-label="HOLO Director 추천 프롬프트">
       <div class="holoDirectorHead">
         <div>
-          <small>HOLO DIRECTOR MODE · SKILL ROUTER v1.5</small>
-          <h2>두 가지 연출 방향을 준비했습니다</h2>
-          <p>지금까지 축적한 HOLO 영상 스킬에서 필요한 규칙만 골라 서로 다른 두 안으로 설계했습니다.</p>
+          <small>HOLO DIRECTOR MODE · SKILL ROUTER v1.6</small>
+          <h2>세 가지 연출 방향을 준비했습니다</h2>
+          <p>A는 안정성과 일관성, B는 시네마틱 임팩트, C는 내가 쓴 내용을 유지하면서 카메라·구도·조명만 보강합니다.</p>
         </div>
         <button class="holoDirectorClose" type="button" aria-label="닫기">×</button>
       </div>
@@ -161,12 +180,17 @@ function showDirectorOverlay(data: DirectorResponse, payload: CommandPayload | n
           <span><b>SKILLS</b>${escapeHtml((data.analysis.selectedSkills || []).slice(0, 4).join(" · ") || "AUTO ROUTING")}</span>
         </div>
       ` : ""}
+      <div class="holoDirectorLegend">
+        <span><b>A</b> 일관성·안정성</span>
+        <span><b>B</b> 영화적 임팩트</span>
+        <span><b>C</b> 내 원문 유지 + 연출 보강</span>
+      </div>
       <div class="holoDirectorGrid">
         ${(data.candidates || []).map(cardHtml).join("")}
       </div>
       <div class="holoDirectorFooter">
-        <span>선택한 프롬프트가 입력창에 적용되고, <b>영상 만들기</b>를 누르면 그 안으로 생성됩니다.</span>
-        <button class="holoDirectorRetry" type="button">↻ 다시 추천받기</button>
+        <span>세 안 중 하나를 선택하면 입력창에 적용됩니다. 그 다음 <b>영상 만들기</b>를 누르면 선택한 프롬프트로 생성됩니다.</span>
+        <button class="holoDirectorRetry" type="button">↻ A/B/C 다시 추천받기</button>
       </div>
     </section>
   `;
@@ -215,8 +239,8 @@ async function requestDirector(payload: CommandPayload, reopen = false) {
     });
     const data = await response.json() as DirectorResponse & { error?: string };
     if (!response.ok) throw new Error(data.error || "HOLO Director 요청 실패");
-    const recommended = data.candidates?.find((candidate) => candidate.recommended) || data.candidates?.[0];
-    if (recommended) chooseCandidate(recommended, false);
+    selectedCandidate = null;
+    removeSelectedChip();
     showDirectorOverlay(data, payload);
     return data;
   } catch (error) {
@@ -256,7 +280,10 @@ function installFetchPatch() {
       const director = await requestDirector(payload);
       if (director) {
         const synthetic = {
-          plan: director.plan,
+          plan: {
+            ...director.plan,
+            refinedPrompt: "HOLO가 A/B/C 세 가지 연출안을 준비했습니다. 원하는 안을 선택해 주세요.",
+          },
           source: director.source,
           directorMode: true,
           candidates: director.candidates,
