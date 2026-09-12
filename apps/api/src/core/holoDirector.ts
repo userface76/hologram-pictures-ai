@@ -62,7 +62,7 @@ function mediaNotes(media?: VideoMediaInputs) {
 
 function buildInput(text: string, media?: VideoMediaInputs) {
   const skillPack = loadRuntimeSkills();
-  const system = `You are HOLO DIRECTOR MODE for HOLOGRAM PICTURES AI.\nYou are a senior AI video director and prompt-intelligence system.\nUse the runtime skill pack below as production rules, not as text to repeat.\nReturn ONLY valid JSON.\n\nRUNTIME SKILL PACK:\n${skillPack}\n\nTASK:\nAnalyze the user's idea and return exactly two genuinely different production-ready prompt strategies.\nCandidate stable prioritizes identity/product continuity, controlled motion, simpler camera logic and feasibility.\nCandidate cinematic prioritizes stronger visual impact, lens/angle/reveal design and cinematic energy while remaining feasible.\nExactly one candidate must have recommended=true.\nDo not produce two paraphrases.\nDo not invent visual details that are not visible in supplied images.\nPreserve user-supplied names/brands.\nPrompts should be production-ready, usually English, concise enough for a video generator, and include only relevant constraints.\n\nJSON schema:\n{\n  \"analysis\": {\"intent\":string,\"subject\":string,\"format\":string,\"duration\":number,\"risks\":string[],\"selectedSkills\":string[]},\n  \"plan\": {\"title\":string,\"model\":string,\"duration\":number,\"aspectRatio\":string,\"resolution\":string,\"audio\":boolean,\"style\":string,\"camera\":string,\"scenes\":[{\"index\":number,\"seconds\":string,\"description\":string}]},\n  \"candidates\": [\n    {\"id\":\"stable\",\"label\":string,\"summary\":string,\"reason\":string,\"recommended\":boolean,\"score\":number,\"skills\":string[],\"prompt\":string},\n    {\"id\":\"cinematic\",\"label\":string,\"summary\":string,\"reason\":string,\"recommended\":boolean,\"score\":number,\"skills\":string[],\"prompt\":string}\n  ]\n}\n\nDefaults: model=minimax-h3, duration within 4-15 seconds, resolution=768p. If the user clearly asks vertical short-form use 9:16; otherwise preserve requested format or use 16:9.\n\nMEDIA CONTROL:\n${mediaNotes(media)}\n\nUSER IDEA:\n${text}`;
+  const system = `You are HOLO DIRECTOR MODE for HOLOGRAM PICTURES AI.\nYou are a senior AI video director and prompt-intelligence system.\nUse the runtime skill pack below as production rules, not as text to repeat.\nReturn ONLY valid JSON.\n\nRUNTIME SKILL PACK:\n${skillPack}\n\nTASK:\nAnalyze the user's idea and return exactly two genuinely different production-ready prompt strategies.\nCandidate stable prioritizes identity/product continuity, controlled motion, simpler camera logic and feasibility.\nCandidate cinematic prioritizes stronger visual impact, lens/angle/reveal design and cinematic energy while remaining feasible.\nExactly one candidate must have recommended=true.\nDo not produce two paraphrases.\nDo not invent visual details that are not visible in supplied images.\nPreserve user-supplied names/brands.\nPrompts should be production-ready, usually English, concise enough for a video generator, and include only relevant constraints.\n\nJSON schema:\n{\n  \"analysis\": {\"intent\":string,\"subject\":string,\"format\":string,\"duration\":number,\"risks\":string[],\"selectedSkills\":string[]},\n  \"plan\": {\"title\":string,\"model\":string,\"duration\":number,\"aspectRatio\":string,\"resolution\":string,\"audio\":boolean,\"style\":string,\"camera\":string[],\"scenes\":[{\"index\":number,\"seconds\":number,\"description\":string}]},\n  \"candidates\": [\n    {\"id\":\"stable\",\"label\":string,\"summary\":string,\"reason\":string,\"recommended\":boolean,\"score\":number,\"skills\":string[],\"prompt\":string},\n    {\"id\":\"cinematic\",\"label\":string,\"summary\":string,\"reason\":string,\"recommended\":boolean,\"score\":number,\"skills\":string[],\"prompt\":string}\n  ]\n}\n\nDefaults: model=minimax-h3, duration within 4-15 seconds, resolution=768p. If the user clearly asks vertical short-form use 9:16; otherwise preserve requested format or use 16:9.\n\nMEDIA CONTROL:\n${mediaNotes(media)}\n\nUSER IDEA:\n${text}`;
 
   const content: any[] = [{ type: "input_text", text: system }];
   if (media?.firstFrameUrl) {
@@ -96,6 +96,24 @@ function normalizeCandidate(raw: any, id: "stable" | "cinematic", fallbackPrompt
     skills: Array.isArray(raw?.skills) ? raw.skills.slice(0, 7).map(String) : [],
     prompt: String(raw?.prompt || fallbackPrompt),
   };
+}
+
+function normalizeCamera(value: unknown, fallback?: string[]) {
+  if (Array.isArray(value)) return value.map(String).filter(Boolean).slice(0, 6);
+  if (typeof value === "string" && value.trim()) return [value.trim()];
+  return fallback;
+}
+
+function normalizeScenes(value: unknown, fallback: VideoIntent["scenes"]): VideoIntent["scenes"] {
+  if (!Array.isArray(value) || !value.length) return fallback;
+  return value.slice(0, 8).map((scene: any, index: number) => {
+    const seconds = Number(scene?.seconds);
+    return {
+      index: Number(scene?.index) || index + 1,
+      ...(Number.isFinite(seconds) ? { seconds } : {}),
+      description: String(scene?.description || "Scene beat"),
+    };
+  });
 }
 
 function fallbackDirector(text: string): DirectorResult {
@@ -159,8 +177,8 @@ export async function generateDirectorRecommendations(text: string, media?: Vide
       resolution: String(planRaw.resolution || base.resolution || "768p"),
       audio: typeof planRaw.audio === "boolean" ? planRaw.audio : base.audio,
       style: String(planRaw.style || base.style || "cinematic"),
-      camera: String(planRaw.camera || base.camera || "purposeful camera movement"),
-      scenes: Array.isArray(planRaw.scenes) && planRaw.scenes.length ? planRaw.scenes : base.scenes,
+      camera: normalizeCamera(planRaw.camera, base.camera),
+      scenes: normalizeScenes(planRaw.scenes, base.scenes),
       userRequest: text,
     };
 
