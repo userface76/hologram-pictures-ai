@@ -4,13 +4,16 @@ import OpenAI from "openai";
 import { fallbackParse } from "./fallbackParser.js";
 import type { VideoIntent, VideoMediaInputs } from "./types.js";
 
+export type DirectorCandidateId = "stable" | "cinematic" | "user_based";
+
 export type DirectorCandidate = {
-  id: "stable" | "cinematic";
+  id: DirectorCandidateId;
   label: string;
   summary: string;
   reason: string;
   recommended: boolean;
   score: number;
+  preservationScore?: number;
   skills: string[];
   prompt: string;
 };
@@ -29,7 +32,7 @@ export type DirectorResult = {
   plan: VideoIntent;
 };
 
-const FALLBACK_SKILLS = `HOLO Director Runtime Skill v1.5\n- LOCK identity/product/reference first.\n- Separate angle, shot size and movement.\n- Use one primary camera movement in short beats.\n- 9:16 short-form: clear subject, early hook, readable action, strong ending.\n- Maintain lighting and screen direction continuity.\n- Product accuracy outranks visual invention.\n- Candidate A = stable/controlled; Candidate B = cinematic/impact.\n- Exactly one recommendation.`;
+const FALLBACK_SKILLS = `HOLO Director Runtime Skill v1.6\n- LOCK identity/product/reference first.\n- Separate angle, shot size and movement.\n- Use one primary camera movement in short beats.\n- 9:16 short-form: clear subject, early hook, readable action, strong ending.\n- Maintain lighting and screen direction continuity.\n- Product accuracy outranks visual invention.\n- Candidate A = stable/controlled.\n- Candidate B = cinematic/impact.\n- Candidate C = preserve the user's original story and wording as much as possible; add only camera, framing, lens, lighting, motion, mobile readability and ending composition.\n- Exactly one recommendation.`;
 
 function resolveOpenAIModel() {
   const configured = (process.env.OPENAI_MODEL || "").trim();
@@ -39,12 +42,14 @@ function resolveOpenAIModel() {
 
 function loadRuntimeSkills() {
   const candidates = [
+    path.resolve(process.cwd(), "apps/api/src/holo/skills/HOLO_DIRECTOR_RUNTIME_v1.6.md"),
+    path.resolve(process.cwd(), "src/holo/skills/HOLO_DIRECTOR_RUNTIME_v1.6.md"),
     path.resolve(process.cwd(), "apps/api/src/holo/skills/HOLO_DIRECTOR_RUNTIME_v1.5.md"),
     path.resolve(process.cwd(), "src/holo/skills/HOLO_DIRECTOR_RUNTIME_v1.5.md"),
   ];
   for (const file of candidates) {
     try {
-      if (fs.existsSync(file)) return fs.readFileSync(file, "utf8").slice(0, 24000);
+      if (fs.existsSync(file)) return fs.readFileSync(file, "utf8").slice(0, 26000);
     } catch (error) {
       console.warn("HOLO runtime skill pack read skipped:", error);
     }
@@ -62,7 +67,7 @@ function mediaNotes(media?: VideoMediaInputs) {
 
 function buildInput(text: string, media?: VideoMediaInputs) {
   const skillPack = loadRuntimeSkills();
-  const system = `You are HOLO DIRECTOR MODE for HOLOGRAM PICTURES AI.\nYou are a senior AI video director and prompt-intelligence system.\nUse the runtime skill pack below as production rules, not as text to repeat.\nReturn ONLY valid JSON.\n\nRUNTIME SKILL PACK:\n${skillPack}\n\nTASK:\nAnalyze the user's idea and return exactly two genuinely different production-ready prompt strategies.\nCandidate stable prioritizes identity/product continuity, controlled motion, simpler camera logic and feasibility.\nCandidate cinematic prioritizes stronger visual impact, lens/angle/reveal design and cinematic energy while remaining feasible.\nExactly one candidate must have recommended=true.\nDo not produce two paraphrases.\nDo not invent visual details that are not visible in supplied images.\nPreserve user-supplied names/brands.\nPrompts should be production-ready, usually English, concise enough for a video generator, and include only relevant constraints.\n\nJSON schema:\n{\n  \"analysis\": {\"intent\":string,\"subject\":string,\"format\":string,\"duration\":number,\"risks\":string[],\"selectedSkills\":string[]},\n  \"plan\": {\"title\":string,\"model\":string,\"duration\":number,\"aspectRatio\":string,\"resolution\":string,\"audio\":boolean,\"style\":string,\"camera\":string[],\"scenes\":[{\"index\":number,\"seconds\":number,\"description\":string}]},\n  \"candidates\": [\n    {\"id\":\"stable\",\"label\":string,\"summary\":string,\"reason\":string,\"recommended\":boolean,\"score\":number,\"skills\":string[],\"prompt\":string},\n    {\"id\":\"cinematic\",\"label\":string,\"summary\":string,\"reason\":string,\"recommended\":boolean,\"score\":number,\"skills\":string[],\"prompt\":string}\n  ]\n}\n\nDefaults: model=minimax-h3, duration within 4-15 seconds, resolution=768p. If the user clearly asks vertical short-form use 9:16; otherwise preserve requested format or use 16:9.\n\nMEDIA CONTROL:\n${mediaNotes(media)}\n\nUSER IDEA:\n${text}`;
+  const system = `You are HOLO DIRECTOR MODE for HOLOGRAM PICTURES AI.\nYou are a senior AI video director and prompt-intelligence system.\nUse the runtime skill pack below as production rules, not as text to repeat.\nReturn ONLY valid JSON.\n\nRUNTIME SKILL PACK:\n${skillPack}\n\nTASK:\nAnalyze the user's idea and return exactly three genuinely different production-ready prompt strategies.\n\nCandidate stable = OPTION A / CONTROL. Prioritize identity/product continuity, controlled motion, simpler camera logic and feasibility.\nCandidate cinematic = OPTION B / IMPACT. Prioritize stronger visual hook, lens/angle/reveal design and cinematic energy while remaining feasible.\nCandidate user_based = OPTION C / USER BASED. Preserve the user's original story structure, subject order, core wording, intent and event sequence as much as possible. Do NOT aggressively rewrite, add new story events, change character personality, change product/world facts, or reinterpret the narrative. Enhance only the production language that helps generation: camera angle, shot size, lens, composition, lighting, motion wording, short-form readability and ending framing.\n\nExactly one candidate must have recommended=true.\nThe three candidates must not be paraphrases of one another.\nDo not invent visual details that are not visible in supplied images.\nPreserve user-supplied names/brands.\nPrompts should be production-ready, usually English when useful for the generator, concise enough for a video generator, and include only relevant constraints.\nFor user_based, calculate preservationScore 0-100 indicating how strongly the original user intent/structure was preserved; target 90+ unless safety or feasibility requires a change.\n\nJSON schema:\n{\n  \"analysis\": {\"intent\":string,\"subject\":string,\"format\":string,\"duration\":number,\"risks\":string[],\"selectedSkills\":string[]},\n  \"plan\": {\"title\":string,\"model\":string,\"duration\":number,\"aspectRatio\":string,\"resolution\":string,\"audio\":boolean,\"style\":string,\"camera\":string[],\"scenes\":[{\"index\":number,\"seconds\":number,\"description\":string}]},\n  \"candidates\": [\n    {\"id\":\"stable\",\"label\":string,\"summary\":string,\"reason\":string,\"recommended\":boolean,\"score\":number,\"skills\":string[],\"prompt\":string},\n    {\"id\":\"cinematic\",\"label\":string,\"summary\":string,\"reason\":string,\"recommended\":boolean,\"score\":number,\"skills\":string[],\"prompt\":string},\n    {\"id\":\"user_based\",\"label\":string,\"summary\":string,\"reason\":string,\"recommended\":boolean,\"score\":number,\"preservationScore\":number,\"skills\":string[],\"prompt\":string}\n  ]\n}\n\nDefaults: model=minimax-h3, duration within 4-15 seconds, resolution=768p. If the user clearly asks vertical short-form use 9:16; otherwise preserve requested format or use 16:9.\n\nMEDIA CONTROL:\n${mediaNotes(media)}\n\nUSER IDEA — preserve this especially for OPTION C:\n${text}`;
 
   const content: any[] = [{ type: "input_text", text: system }];
   if (media?.firstFrameUrl) {
@@ -85,17 +90,37 @@ function clampDuration(value: unknown, fallback: number) {
   return Number.isFinite(n) ? Math.max(4, Math.min(15, Math.round(n))) : fallback;
 }
 
-function normalizeCandidate(raw: any, id: "stable" | "cinematic", fallbackPrompt: string): DirectorCandidate {
-  return {
+function clampScore(value: unknown, fallback: number) {
+  const n = Number(value);
+  return Math.max(0, Math.min(100, Number.isFinite(n) ? n : fallback));
+}
+
+function defaultLabel(id: DirectorCandidateId) {
+  if (id === "stable") return "안정형 · 일관성 우선";
+  if (id === "cinematic") return "시네마틱 · 임팩트 우선";
+  return "내 문장 유지 · 연출 보강";
+}
+
+function defaultSummary(id: DirectorCandidateId) {
+  if (id === "stable") return "인물·제품 일관성과 안정적인 카메라를 우선합니다.";
+  if (id === "cinematic") return "강한 렌즈·앵글·리빌 연출로 시각적 임팩트를 높입니다.";
+  return "사용자 원문을 최대한 유지하고 카메라·구도·조명·움직임만 보강합니다.";
+}
+
+function normalizeCandidate(raw: any, id: DirectorCandidateId, fallbackPrompt: string): DirectorCandidate {
+  const fallbackScore = id === "stable" ? 91 : id === "cinematic" ? 88 : 90;
+  const candidate: DirectorCandidate = {
     id,
-    label: String(raw?.label || (id === "stable" ? "안정형 · 일관성 우선" : "시네마틱 · 임팩트 우선")),
-    summary: String(raw?.summary || (id === "stable" ? "인물·제품 일관성과 안정적인 카메라를 우선합니다." : "강한 렌즈·앵글·리빌 연출로 시각적 임팩트를 높입니다.")),
+    label: String(raw?.label || defaultLabel(id)),
+    summary: String(raw?.summary || defaultSummary(id)),
     reason: String(raw?.reason || "HOLO Director Check를 기준으로 구성했습니다."),
     recommended: Boolean(raw?.recommended),
-    score: Math.max(0, Math.min(100, Number(raw?.score) || (id === "stable" ? 91 : 88))),
+    score: clampScore(raw?.score, fallbackScore),
     skills: Array.isArray(raw?.skills) ? raw.skills.slice(0, 7).map(String) : [],
     prompt: String(raw?.prompt || fallbackPrompt),
   };
+  if (id === "user_based") candidate.preservationScore = clampScore(raw?.preservationScore, 96);
+  return candidate;
 }
 
 function normalizeCamera(value: unknown, fallback?: string[]) {
@@ -120,9 +145,11 @@ function fallbackDirector(text: string): DirectorResult {
   const base = fallbackParse(text);
   const stablePrompt = `${base.refinedPrompt}\n\nDirector strategy: preserve identity/product continuity, use one clear camera intention, controlled natural motion, consistent lighting and screen direction, and a readable final payoff. Avoid camera overload, identity drift and unnecessary scene changes.`;
   const cinematicPrompt = `${base.refinedPrompt}\n\nDirector strategy: strengthen the visual opening with a purposeful cinematic angle/lens choice, use one expressive but feasible camera move, build clear action progression, and finish with a strong reveal or emotional hero ending. Maintain continuity and avoid chaotic camera changes.`;
+  const userBasedPrompt = `${text}\n\nHOLO production enhancement only — preserve the original story, subjects and event order. Add a clear camera angle and shot size, one purposeful lens choice, one primary camera movement, coherent composition, lighting direction, natural motion wording, short-form readability when relevant, and a clear ending frame. Do not add new story events or alter character/product/world facts.`;
   const candidates = [
     normalizeCandidate({ recommended: true, score: 91, skills: ["identity-lock", "camera-grammar", "continuity", "director-check"], prompt: stablePrompt }, "stable", stablePrompt),
     normalizeCandidate({ recommended: false, score: 88, skills: ["cinematic-story", "camera-angle", "lighting", "hero-ending"], prompt: cinematicPrompt }, "cinematic", cinematicPrompt),
+    normalizeCandidate({ recommended: false, score: 90, preservationScore: 97, skills: ["preserve-intent", "camera-enhancement", "framing", "lighting"], prompt: userBasedPrompt }, "user_based", userBasedPrompt),
   ];
   return {
     source: "fallback",
@@ -137,6 +164,13 @@ function fallbackDirector(text: string): DirectorResult {
     candidates,
     plan: { ...base, refinedPrompt: candidates[0].prompt },
   };
+}
+
+function ensureOneRecommendation(candidates: DirectorCandidate[]) {
+  const marked = candidates.filter((candidate) => candidate.recommended);
+  if (marked.length === 1) return;
+  const best = [...candidates].sort((a, b) => b.score - a.score)[0] || candidates[0];
+  for (const candidate of candidates) candidate.recommended = candidate === best;
 }
 
 export async function generateDirectorRecommendations(text: string, media?: VideoMediaInputs): Promise<DirectorResult> {
@@ -156,15 +190,15 @@ export async function generateDirectorRecommendations(text: string, media?: Vide
     const rawCandidates = Array.isArray(raw?.candidates) ? raw.candidates : [];
     const stableRaw = rawCandidates.find((c: any) => c?.id === "stable") || rawCandidates[0] || {};
     const cinematicRaw = rawCandidates.find((c: any) => c?.id === "cinematic") || rawCandidates[1] || {};
+    const userBasedRaw = rawCandidates.find((c: any) => c?.id === "user_based") || rawCandidates[2] || {};
     const stable = normalizeCandidate(stableRaw, "stable", base.refinedPrompt);
     const cinematic = normalizeCandidate(cinematicRaw, "cinematic", base.refinedPrompt);
+    const userBasedFallback = `${text}\n\nPreserve the user's story and enhance only camera, framing, lens, lighting, motion and ending composition.`;
+    const userBased = normalizeCandidate(userBasedRaw, "user_based", userBasedFallback);
+    const candidates = [stable, cinematic, userBased];
+    ensureOneRecommendation(candidates);
 
-    if (stable.recommended === cinematic.recommended) {
-      stable.recommended = stable.score >= cinematic.score;
-      cinematic.recommended = !stable.recommended;
-    }
-    const candidates = [stable, cinematic];
-    const recommended = candidates.find((c) => c.recommended) || stable;
+    const recommended = candidates.find((candidate) => candidate.recommended) || stable;
     const planRaw = raw?.plan || {};
     const duration = clampDuration(planRaw.duration ?? raw?.analysis?.duration, base.duration);
     const plan: VideoIntent = {
@@ -192,7 +226,7 @@ export async function generateDirectorRecommendations(text: string, media?: Vide
         risks: Array.isArray(raw?.analysis?.risks) ? raw.analysis.risks.slice(0, 6).map(String) : [],
         selectedSkills: Array.isArray(raw?.analysis?.selectedSkills)
           ? raw.analysis.selectedSkills.slice(0, 12).map(String)
-          : [...new Set(candidates.flatMap((c) => c.skills))],
+          : [...new Set(candidates.flatMap((candidate) => candidate.skills))],
       },
       candidates,
       plan,
