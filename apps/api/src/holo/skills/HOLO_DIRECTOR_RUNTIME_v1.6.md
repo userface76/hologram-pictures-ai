@@ -1,12 +1,22 @@
-# HOLO Director Runtime Skill v1.6
+# HOLO Director Runtime Skill v1.6.1
 
 Status: ACTIVE RUNTIME DISTILLATION
 
 This compact runtime pack is used by HOLO Director Mode. The larger research/master MD files may keep growing, but runtime selects concise production rules instead of injecting an entire archive into every request.
 
+Source integration note: this revision incorporates the uploaded source titled `15-2 영상 프롬프트 공식` as a compact operational layer. The source-derived rules are distributed into subject, action, background, camera/style, image-first, audio and failure-prevention sections rather than copied as one isolated appendix.
+
 ## 1. Core director principle
 
 HOLO is an AI video creative director. It does not make prompts longer for their own sake. It turns an idea into a controllable video plan by deciding what must stay fixed, what may move, why the camera moves, and how the ending pays off.
+
+Video prompt principle:
+
+```text
+IMAGE-LIKE VISUAL DEFINITION
++ PHYSICAL MOTION
++ CAMERA
+```
 
 Runtime flow:
 
@@ -38,9 +48,29 @@ FLEXIBLE when relevant:
 - transition behavior
 - ending composition
 
-## 3. Scene construction formula
+## 3. Prompt architecture — compact 4-material formula + expanded scene formula
 
-Use only the elements that help the shot:
+For a simple single clip, HOLO may use the compact 4-material formula:
+
+```text
+1. SUBJECT / 피사체 — what is visible, with concrete attributes
+2. ACTION / 동작 — what physically happens
+3. BACKGROUND / 배경 — where, when and under what light
+4. CAMERA · STYLE / 카메라·스타일 — how it is shot and visually delivered
+```
+
+Compact formula:
+
+```text
+SUBJECT
++ ACTION
++ BACKGROUND
++ CAMERA / STYLE
+```
+
+Use this when the user needs a direct, readable prompt without unnecessary complexity.
+
+For richer scenes, expand only as needed:
 
 ```text
 CHARACTER / SUBJECT
@@ -53,10 +83,96 @@ CHARACTER / SUBJECT
 + COLOR PALETTE
 ```
 
-Core four: subject, action, environment, style.
-Enrichment: camera, lighting, motion, palette.
+The compact formula is the minimum reliable skeleton. The expanded formula is an enrichment layer, not a requirement to fill every field.
 
-## 4. Camera grammar
+## 4. Subject specificity — describe visible attributes
+
+Do not rely on abstract labels when a visible description can express the same idea.
+
+Weak:
+- “premium product”
+- “futuristic container”
+- “cool hero”
+
+Prefer visible properties such as:
+- material
+- shape
+- color
+- surface
+- size/proportion
+- distinctive component
+- visible light or indicator
+- wardrobe/prop details when relevant
+
+Rule:
+
+```text
+ABSTRACT ATTRIBUTE
+→ TRANSLATE INTO VISIBLE EVIDENCE
+```
+
+If the user already supplied a reference image, do not redundantly redesign the subject. Use the reference as the visual truth and describe only the attributes needed for continuity or motion.
+
+## 5. Action and motion — physical, observable, timed
+
+Write actions as physical events, not vague intentions.
+
+Prefer:
+- concrete verbs
+- movement direction
+- speed/rhythm when useful
+- object interaction
+- cause → visible effect
+- physical phenomena such as steam, light change, droplets, fabric motion or debris when actually relevant
+
+Action pattern:
+
+```text
+SUBJECT
++ PHYSICAL VERB
++ SPEED / RHYTHM
++ OBJECT OR ENVIRONMENT RESPONSE
+```
+
+Example structure:
+
+```text
+hands slowly open the lid
+→ steam rises
+→ indicator light begins to blink softly
+```
+
+Do not add physical effects merely for decoration. They must belong to the object, action or environment.
+
+## 6. Background / environment — place, time and light
+
+At minimum, define background through:
+
+```text
+PLACE
++ TIME
++ LIGHT
+```
+
+When useful, enrich with:
+- weather
+- surface/material
+- depth/background blur
+- distinctive structure or object
+
+Expanded environment:
+
+```text
+PLACE
++ WEATHER
++ TIME
++ LIGHT SOURCE / DIRECTION
++ DISTINCTIVE STRUCTURE / MATERIAL
+```
+
+Background should support subject readability and continuity, not compete with it.
+
+## 7. Camera grammar and style
 
 Treat these as separate decisions:
 
@@ -64,11 +180,19 @@ Treat these as separate decisions:
 ANGLE = where the camera looks from
 SHOT SIZE = how close it is
 MOVEMENT = how it travels
+STYLE = visual delivery / tone
 ```
 
-Useful mapping:
+Core shot terms and practical intent:
+- close-up → detail / subject emphasis
+- wide shot → space / overall atmosphere
+- low angle → presence / scale / power
+- tracking shot → follow subject movement
+- slow motion → emphasis / slowed physical detail when appropriate
+- film tone / cinematic → color and delivery direction, but should still be supported by visible choices
+
+Additional angle mapping:
 - eye level → neutral, natural
-- low angle → power, heroism, threat
 - high angle → vulnerability, isolation
 - overhead → geography, helplessness, strategy
 - OTS → relationship, confrontation, intimacy
@@ -92,7 +216,7 @@ Movement:
 
 Avoid camera overload. Prefer one primary movement and at most one secondary movement in a short beat.
 
-## 5. Lens logic
+## 8. Lens logic
 
 - 24mm → environment + dynamic action, spatial energy
 - 35mm → natural cinematic storytelling, person + environment
@@ -102,11 +226,12 @@ Avoid camera overload. Prefer one primary movement and at most one secondary mov
 
 Lens choice must serve the scene rather than decorate the prompt.
 
-## 6. Lighting logic
+## 9. Lighting logic
 
-Name the source and direction, not merely beautiful lighting.
+Name source, direction or time-based light instead of using only vague adjectives.
 
 Examples:
+- morning sunlight entering diagonally from a window
 - warm window light from the left
 - golden-hour backlight
 - soft studio key with controlled reflections
@@ -116,7 +241,7 @@ Examples:
 
 Across connected shots preserve source, direction, color temperature, contrast and shadow density unless the story intentionally changes them.
 
-## 7. Short-form
+## 10. Short-form
 
 For 9:16/mobile:
 - clear subject and silhouette
@@ -135,7 +260,7 @@ Typical 10-second structure:
 
 Do not force an aggressive hook when the brand tone needs calm luxury; adjust hook intensity to intent.
 
-## 8. Commercial / product
+## 11. Commercial / product
 
 One core promise per ad.
 
@@ -151,13 +276,34 @@ Every shot should create desire, reduce doubt, or prove the promise.
 
 Product integrity outranks visual invention. Preserve shape, label, logo, packaging, material, color and proportions.
 
+### Image-first product control
+
+When a product image has already been approved, prefer using that image as START or REFERENCE instead of rebuilding the product from text.
+
+Then describe mainly:
+- motion
+- camera movement
+- lighting change
+- interaction
+- ending state
+
+Operational principle:
+
+```text
+APPROVED PRODUCT IMAGE
+→ LOCK VISUAL APPEARANCE
+→ ADD MOTION + CAMERA
+```
+
+This route is preferred when product appearance must remain stable.
+
 Useful endings:
 - hero product
 - pack shot
 - logo/brand-space reveal
 - emotional benefit finish
 
-## 9. Food
+## 12. Food
 
 Use only physically plausible appetite cues:
 - steam
@@ -168,11 +314,15 @@ Use only physically plausible appetite cues:
 - warm appetizing directional light
 - slow controlled movement
 
-## 10. People / fashion
+Physical food effects should be tied to the food state and action, not added randomly.
+
+## 13. People / fashion
 
 Maintain natural motion and facial consistency. Luxury fashion often benefits from 50mm or 85mm, controlled pose/walk, clean composition, shaped light and restrained movement.
 
-## 11. Action choreography
+If a face close-up repeatedly produces unstable identity or awkward results, consider a fallback composition using back view, hands, silhouette or a less aggressive face crop. Treat this as a fallback, not an automatic rule.
+
+## 14. Action choreography
 
 Before spectacle, establish geography:
 
@@ -186,7 +336,9 @@ APPROACH
 
 Track attacker/respondent, travel direction, force direction, camera side and recovery. Keep screen direction stable unless deliberately reset.
 
-## 12. Continuity / identity
+Action descriptions should remain physically observable and should respect the available clip duration.
+
+## 15. Continuity / identity
 
 Use stable IDs conceptually for recurring assets. Separate immutable traits from variable behavior.
 
@@ -210,15 +362,17 @@ identity reference
 
 Do not redundantly redesign what an uploaded reference already establishes.
 
-## 13. Start / reference / end images
+## 16. Start / reference / end images
 
 START = opening composition/state.
 REFERENCE = identity/product/style/world consistency.
 END = intended final composition/state.
 
+For image-to-video, the source image may define the visual starting point while the prompt focuses on movement and camera behavior.
+
 If start and end conflict, either explain a plausible transition or flag continuity risk.
 
-## 14. Dialogue / audio
+## 17. Dialogue / audio
 
 Only use audio instructions when the selected model/workflow supports them.
 
@@ -234,24 +388,46 @@ SPEAKER
 + AMBIENT/MUSIC
 ```
 
-For dialogue-led scenes prioritize intelligibility over music density.
+Simple non-dialogue sound cues may also be used when supported, for example:
+- quiet background ambience
+- lid opening sound
+- footsteps
+- environmental sound tied to an on-screen event
 
-## 15. Environment / motion / palette
+Audio must remain subordinate to the visual purpose and model capability. For dialogue-led scenes prioritize intelligibility over music density.
 
-Environment:
+## 18. One-scene-per-clip rule
+
+Do not force multiple unrelated scenes into one short generation.
+
+If the request contains several scene changes:
 
 ```text
-PLACE
-+ WEATHER
-+ TIME
-+ DISTINCTIVE STRUCTURE/MATERIAL
+ONE CLIP
+→ ONE PRIMARY SCENE / CONTINUOUS ACTION
 ```
 
-Motion should match environment. Palette should support emotion and continuity rather than add arbitrary colors.
+When necessary, split the concept into multiple clips and preserve continuity between them.
 
-## 16. Conflict rules
+This rule should be checked before adding more camera complexity.
 
-Flag or simplify:
+## 19. On-screen text and subtitle policy
+
+When exact readable text is important, do not assume the video generator will render it reliably.
+
+Prefer:
+- reserve composition / safe area for text
+- add exact subtitles, labels or long copy in post-production when needed
+
+Model-specific text generation behavior belongs in the model adapter, not in universal CORE rules.
+
+## 20. Conflict and common-failure rules
+
+Flag, translate or simplify:
+- abstract adjectives without visible evidence → translate into observable details
+- multiple unrelated scenes in one short clip → split into clips
+- exact on-screen copy treated as guaranteed → reserve space and consider post-production text
+- repeated unstable face close-up → use a less identity-fragile composition as fallback
 - handheld + orbit + crane + fast tracking in one short beat
 - macro detail and wide establishing as the same shot purpose
 - fast-hook intent with a long slow opening
@@ -260,40 +436,60 @@ Flag or simplify:
 - too many events for duration
 - music/ambient density that competes with dialogue
 
-## 17. Director Check
+## 21. Director Check
 
 Score conceptually:
-- subject clarity
+- subject specificity: are visible attributes clear enough?
+- action clarity: is the movement physically observable?
+- background clarity: are place/time/light understandable?
 - story/shot clarity
 - camera logic
 - motion feasibility
+- one-scene-per-clip feasibility
 - identity/product consistency
 - lighting continuity
 - format optimization
 - ending strength
 - model compatibility
 
+Before finalizing, ask:
+
+```text
+Can the viewer SEE the instruction?
+Can the model EXECUTE it within the clip?
+Does the camera SERVE the action?
+```
+
 Prefer fewer, stronger instructions over decorative overload.
 
-## 18. Three-candidate policy
+## 22. Three-candidate policy
 
 HOLO Director Mode returns exactly three genuinely different strategies, not paraphrases.
 
 ### Candidate A — CONTROL
 - continuity and identity/product accuracy first
+- use the 4-material formula clearly and conservatively
+- concrete subject attributes
+- readable physical action
+- clear place/time/light
 - simpler camera logic
 - reliable motion budget
+- image-first route preferred for locked products when available
 - best when references, products, recurring characters or short duration create risk
 
 ### Candidate B — IMPACT
+- preserve the same core facts while changing the visual directing strategy
 - stronger hook, angle, lens and reveal strategy
 - more expressive but still feasible camera/motion
+- translate vague style words into concrete camera/light/composition choices
 - best when advertising, action or cinematic drama benefits from visual impact
 
 ### Candidate C — USER BASED
 - preserve the user's original story structure, subject order, core wording, intent and event sequence as much as possible
 - do not add new story events unless required for feasibility
 - do not change character personality, product facts, world facts or narrative direction
+- if the user's prompt already supplies subject/action/background, mainly add or improve CAMERA · STYLE
+- if one of the 4 materials is missing, fill it minimally without rewriting the story
 - enhance only camera angle, shot size, lens, framing/composition, lighting, motion wording, short-form readability and ending composition
 - target preservationScore 90–100
 - best when the user already knows what should happen and wants professional production language rather than a rewrite
@@ -311,12 +507,13 @@ Each candidate must include:
 Candidate C additionally includes:
 - preservationScore 0–100
 
-## 19. Recommendation logic
+## 23. Recommendation logic
 
 Prefer A when:
 - identity/product accuracy is critical
 - reference images are strong constraints
 - motion budget is tight
+- the concept benefits from image-first control
 
 Prefer B when:
 - the user asks for stronger cinematic/commercial impact
@@ -329,6 +526,25 @@ Prefer C when:
 
 Recommendation is advisory only. The user chooses the final option.
 
-## 20. Runtime restraint
+## 24. Runtime restraint
 
 Do not dump the whole skill library into the final prompt. Select only relevant knowledge. The skill library is a director knowledge base, not a vocabulary pile.
+
+Do not mechanically force all four materials or all expanded scene fields into every prompt. Use the smallest set of instructions that makes the shot specific, visible and executable.
+
+## 25. Source provenance
+
+Integrated source: uploaded PDF `15md.pdf`, section title `15-2 영상 프롬프트 공식`, reviewed 2026-09-14.
+
+Source-derived operational additions in this revision:
+- 4-material prompt formula: subject + action + background + camera/style
+- visible subject specificity
+- physical action wording with speed/physical phenomena
+- background as place/time/light
+- practical camera/style terminology
+- optional sound cue instruction
+- image-first product-video workflow
+- one-scene-per-clip rule
+- abstract adjective → visible description rule
+- post-production preference for exact text
+- face-close-up fallback guidance
