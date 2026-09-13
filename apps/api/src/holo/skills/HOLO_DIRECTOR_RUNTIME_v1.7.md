@@ -1,4 +1,4 @@
-# HOLO Director Runtime Skill v1.7.1 — Candidate Routing Overlay
+# HOLO Director Runtime Skill v1.7.2 — Candidate Routing Overlay
 
 Status: ACTIVE RUNTIME ROUTING OVERLAY
 
@@ -106,6 +106,7 @@ Director behavior:
 - if SUBJECT / ACTION / BACKGROUND are already present, preserve them and mainly improve CAMERA / STYLE
 - if one material is missing, fill it minimally without changing the story
 - add camera angle, shot size, lens, composition, lighting, motion and ending framing only
+- preserve the user's original prompt granularity unless a missing production detail would make generation unreliable
 - target preservationScore 90–100
 
 ## 5. Genre routing
@@ -174,3 +175,162 @@ If these conditions fail, rewrite the relevant candidate before returning.
 
 ## 8. Output discipline
 Each candidate returns 3–7 skill tags that reflect the actual route used. Do not invent decorative skill names after writing the prompt. Skill tags should explain why that prompt differs from the other options.
+
+## 9. Prompt granularity ladder
+HOLO supports three prompt-detail levels. Choose the lowest level that gives enough control for the user's request.
+
+### LEVEL 1 — ONE-LINE CREATIVE PROMPT
+Goal: maximum creative latitude, minimum control.
+
+Use when:
+- the user gives a short idea or concept
+- the exact camera/timing is not important
+- playful ideation or rapid variation matters more than repeatability
+
+Preferred shape:
+```text
+[STYLE optional] + [SUBJECT / SITUATION] + [ONE PRIMARY ACTION or ONE LINE OF DIALOGUE]
+```
+
+Rules:
+- keep it to one clear visual idea
+- one primary action is better than several unrelated events
+- dialogue, if present, should be short
+- do not inflate a one-line idea into a shot-by-shot screenplay unless the user asks for more control
+- A may clarify missing visual facts; B may strengthen style/camera; C should preserve the one-line nature as much as possible
+
+### LEVEL 2 — BASIC STRUCTURED PROMPT
+Goal: balanced creativity and control.
+
+Use when:
+- the scene needs a clear shot, mood, action, dialogue or sound
+- one scene contains several coordinated elements
+- the user wants more reliable generation without full timeline choreography
+
+Recommended structure:
+```text
+SCENE DESCRIPTION
+CAMERA SHOT / ANGLE
+MOOD
+ACTIONS
+DIALOGUE optional
+SOUND optional
+```
+
+Rules:
+- scene description establishes who/where/what
+- camera describes shot size/angle and only necessary movement
+- mood should be translated into visible lighting/color/performance cues where possible
+- actions should be sequential and physically observable
+- dialogue and sound remain concise and subordinate to the visual action
+
+### LEVEL 3 — ADVANCED CAMERA & TIMING PROMPT
+Goal: high control over a short cinematic sequence.
+
+Use when:
+- the user specifies timing, lenses, depth of field, camera movement, shot progression, lighting logic or sound design
+- a 6–15 second clip needs beat-by-beat choreography
+- action, food/product macro, commercial hero shots or cinematic sequences require precise progression
+
+Recommended structure:
+```text
+SCENE DESCRIPTION
+LENS / SHOT / DEPTH OF FIELD
+CAMERA MOVEMENT
+TIMING BEATS
+ACTIONS
+LIGHTING / PALETTE
+DIALOGUE optional
+SOUND / MUSIC
+EMOTIONAL INTENT / END FRAME
+```
+
+Rules:
+- timing beats must fit the requested total duration
+- each beat should have one dominant visual purpose
+- camera/lens changes must be motivated by story or visual function, not decoration
+- preserve screen direction, lighting logic and identity continuity across beats
+- advanced detail must improve controllability; remove detail that competes with the model's motion budget
+
+## 10. Granularity preservation rule
+Do not assume "more detailed" always means "better".
+
+HOLO should first infer the user's current level:
+- very short concept / one clear sentence → Level 1
+- labeled or clearly structured scene/camera/action/dialogue → Level 2
+- explicit timestamps, multiple lens/shot instructions, DoF or beat choreography → Level 3
+
+Routing behavior:
+- OPTION A may increase detail by one level when needed for reliability
+- OPTION B may increase detail by one level when stronger visual direction is beneficial
+- OPTION C should normally remain at the user's current level and only fill missing camera/framing/lighting/motion information
+
+Never convert every Level 1 idea into Level 3. Complexity is a tool, not a quality score.
+
+## 11. Timing choreography rule
+For advanced short-video prompts:
+- define the total duration first
+- split time into readable beats
+- prefer 3–5 meaningful beats for a 10-second clip unless a simpler scene needs fewer
+- each beat should describe camera + action + visible consequence
+- avoid simultaneous unrelated actions that exceed the motion budget
+- leave a short final hold when a hero/product/poster frame matters
+
+Useful pattern for 10 seconds:
+```text
+0–2s OPEN / HOOK
+2–4s ACTION SETUP
+4–6s MAIN ACTION / TRANSITION
+6–8s RESPONSE / REVEAL
+8–10s PAYOFF / END HOLD
+```
+
+This is a template, not a mandatory rhythm.
+
+## 12. Lens, DoF and camera progression
+Advanced prompts may specify lens and depth of field when they materially change the visual result.
+
+Guidelines:
+- macro / long focal lengths support texture, food, product detail and facial emphasis
+- wider lenses support geography, speed and spatial energy
+- shallow DoF supports emphasis but can reduce environmental readability
+- medium DoF supports action geography and continuity
+- lens or shot changes inside one short clip should feel like a coherent progression, not a list of camera gear
+- if multiple lens changes are requested, verify that the model/workflow can plausibly express the intended transition; otherwise simplify to a dominant lens/look
+
+## 13. Dialogue and sound by prompt level
+Level 1:
+- dialogue optional; one short line
+- sound usually omitted unless central to the idea
+
+Level 2:
+- dialogue may identify speaker + line
+- sound may include 1–2 important ambient/effect cues
+
+Level 3:
+- dialogue timing may be placed inside a beat when needed
+- sound design may include ambience, critical effects, breath/foley and intentional no-BGM
+- do not overcrowd the soundtrack; dialogue intelligibility and critical effects outrank decorative audio
+
+## 14. End-frame / poster-frame rule
+When the final image matters, design the last beat deliberately.
+
+Possible endings:
+- product hero frame
+- character emotional hold
+- reveal of destination/object
+- stable poster-like composition
+- logo-safe negative space when post-production branding is expected
+
+For short clips, a brief final hold can improve readability. Do not freeze the image if the requested style calls for continuous motion.
+
+## 15. Physical realism in advanced action
+For grounded cinematic action:
+- establish corridor/room geography before rapid motion
+- track direction of travel and cover positions
+- use environmental effects such as water, sparks, reflections, smoke or debris only when they respond plausibly to the scene
+- lighting effects should have a source: practical lights, emergency lights, muzzle flash, reflected water, etc.
+- camera shake should communicate urgency without destroying readability
+- the emotional objective should remain legible beneath technical choreography
+
+The purpose of technical detail is to make the scene more believable and controllable, not merely more complicated.
