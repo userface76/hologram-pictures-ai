@@ -78,139 +78,147 @@ export function routeHoloSkills(text: string, media?: VideoMediaInputs): SkillRo
     userGenre.push("preserve-location-facts", "background-place-time-light");
   }
 
+  const identitySensitive = has(text, [
+    "인물", "사람", "캐릭터", "character", "woman", "man", "girl", "boy", "여자", "남자",
+    "같은 얼굴", "동일 인물", "같은 사람", "same person", "same character", "일관성", "consistency",
+  ]);
+  if (identitySensitive) detected.push("identity-sensitive");
+
   const exactTextRequested = has(text, ["글자", "텍스트", "자막", "subtitle", "caption", "문구", "logo text"]);
   if (exactTextRequested) detected.push("onscreen-text");
 
   const faceCloseupRequested = has(text, ["얼굴 클로즈업", "face close-up", "face closeup", "extreme close-up face"]);
   if (faceCloseupRequested) detected.push("face-closeup");
 
-  const advancedTiming = /\d+(?:\.\d+)?\s*[–—-]\s*\d+(?:\.\d+)?\s*초/.test(text)
-    || has(text, ["depth of field", "camera move", "timing:", "렌즈 / 샷", "렌즈/샷", "타이밍", "0.0–", "poster frame", "포스터 프레임"]);
-  const basicStructured = !advancedTiming && has(text, ["장면 서술", "camera shot", "mood:", "actions:", "dialogue:", "sound:", "카메라연출"]);
-  const nonEmptyLines = text.trim().split(/\n+/).map((line) => line.trim()).filter(Boolean);
-  const oneLineCreative = !advancedTiming && !basicStructured && nonEmptyLines.length <= 2 && text.trim().length <= 220;
+  const explicitVertical = has(text, ["9:16", "세로", "vertical", "쇼츠", "shorts", "릴스", "reels", "틱톡", "tiktok"]);
+  const explicitWide = has(text, ["16:9", "가로", "landscape", "wide"]);
+  const explicitSquare = has(text, ["1:1", "정사각", "square"]);
+  if (explicitVertical || explicitWide || explicitSquare) detected.push("aspect-ratio-aware");
 
-  if (advancedTiming) detected.push("prompt-level-3-advanced");
-  else if (basicStructured) detected.push("prompt-level-2-structured");
-  else if (oneLineCreative) detected.push("prompt-level-1-one-line");
-  else detected.push("prompt-level-2-balanced");
-
-  const promptLevelSkills = advancedTiming
-    ? ["advanced-timing-choreography", "lens-dof-progression", "timed-sound-design", "end-frame-hold"]
-    : basicStructured
-      ? ["basic-structured-prompt", "scene-camera-action-dialogue-sound"]
-      : oneLineCreative
-        ? ["one-line-creative-prompt", "granularity-restraint"]
-        : ["balanced-prompt-structure"];
-
-  if (!detected.some((item) => !item.startsWith("prompt-level-"))) detected.unshift("general-video");
+  if (!detected.length) detected.push("general-video");
 
   const hasReference = Boolean(media?.referenceImageUrl);
-  const hasFrame = Boolean(media?.firstFrameUrl || media?.lastFrameUrl);
+  const hasStart = Boolean(media?.firstFrameUrl);
+  const hasEnd = Boolean(media?.lastFrameUrl);
+  const hasFrame = hasStart || hasEnd;
   const hasApprovedImage = hasReference || hasFrame;
+  const hasDualFrame = hasStart && hasEnd;
   const productLike = detected.includes("commercial-product") || detected.includes("food");
+  const fidelitySensitive = identitySensitive || productLike;
+
+  const referenceSupporting = [
+    ...(hasApprovedImage ? ["reference-first-workflow", "image-to-video-preservation"] : []),
+    ...(!hasApprovedImage && fidelitySensitive ? ["reference-image-recommended"] : []),
+    ...(hasDualFrame ? ["dual-frame-transition-control"] : []),
+    ...(detected.includes("aspect-ratio-aware") ? ["aspect-ratio-composition"] : []),
+    "background-motion-control",
+    "camera-time-clarity",
+  ];
 
   const stablePrimary = unique([
     "subject-attribute-specificity",
     "physical-action-description",
     "background-place-time-light",
-    "prompt-granularity-selection",
-    ...(advancedTiming ? ["timing-feasibility", "continuity-across-timed-beats"] : []),
     ...(hasReference ? ["world-asset-identity-lock", "reference-driven-video-prompting"] : ["subject-clarity"]),
     ...(hasFrame ? ["start-end-frame-continuity"] : []),
     ...(hasApprovedImage && productLike ? ["image-first-product-control"] : []),
+    ...(hasDualFrame ? ["dual-frame-transition-control"] : []),
     "continuity-editing-axis-match",
     "lighting-continuity-design",
     "camera-restraint",
     ...stableGenre,
-  ]).slice(0, 11);
+  ]).slice(0, 10);
 
   const impactPrimary = unique([
     "director-visual-language",
     "shot-size-and-angle-language",
     "camera-purpose-mapping",
     "visible-style-translation",
-    "prompt-granularity-selection",
-    ...(advancedTiming ? ["shot-progression", "timed-payoff-design"] : []),
+    ...(hasApprovedImage ? ["reference-preserving-impact-direction"] : []),
     ...impactGenre,
-  ]).filter((skill) => !stablePrimary.includes(skill)).slice(0, 10);
+  ]).filter((skill) => !stablePrimary.includes(skill)).slice(0, 9);
 
   const userPrimary = unique([
     "preserve-user-intent",
-    "preserve-prompt-granularity",
     "four-material-prompt-formula",
     "subject-attribute-specificity",
     "physical-action-description",
     "background-place-time-light",
     ...(hasReference ? ["world-asset-identity-lock"] : []),
+    ...(hasApprovedImage ? ["reference-as-visual-truth"] : []),
     ...(hasApprovedImage && productLike ? ["image-first-product-control"] : []),
+    ...(hasDualFrame ? ["dual-frame-transition-control"] : []),
     "camera-grammar",
     "framing-enhancement",
     "lighting-source-rule",
     ...userGenre,
-  ]).slice(0, 11);
+  ]).slice(0, 10);
 
   const sharedSupporting = [
     "duration-feasibility",
     "one-scene-per-clip",
     "abstract-to-visible-description",
-    ...promptLevelSkills,
-    ...(advancedTiming ? ["physical-realism-check", "final-hold-when-useful"] : []),
+    "temporal-progression",
+    "subject-environment-camera-motion-separation",
+    ...referenceSupporting,
     ...(exactTextRequested ? ["text-postproduction"] : []),
     ...(faceCloseupRequested ? ["face-fidelity-fallback"] : []),
   ];
-
-  const levelDirective = advancedTiming
-    ? "The user is operating at Level 3 advanced timing. Preserve the total duration, validate each timed beat, and simplify only when camera/lens/action density exceeds feasible motion budget."
-    : basicStructured
-      ? "The user is operating at Level 2 structured prompting. Keep scene, camera, mood, actions, dialogue and sound organized without unnecessarily expanding into a timed screenplay."
-      : oneLineCreative
-        ? "The user is operating at Level 1 one-line prompting. Keep the creative concept compact; do not inflate it into a full shot list unless reliability truly requires one extra layer of detail."
-        : "Use balanced prompt detail: enough structure for control without unnecessary technical density.";
 
   return {
     detected,
     stable: {
       primary: stablePrimary,
-      supporting: unique([...sharedSupporting, "director-check", "ending-readability"]),
+      supporting: unique([...sharedSupporting, "director-check", "ending-readability", "regeneration-diagnosis-loop"]),
       avoid: unique([
         "camera-overload",
         "unnecessary-story-rewrite",
         "identity-drift",
         "decorative-motion",
+        "vague-everything-moves",
+        "abrupt-unmotivated-motion",
         "multiple-unrelated-scenes-per-clip",
-        "unnecessary-granularity-escalation",
         ...(exactTextRequested ? ["generated-exact-text-assumption"] : []),
       ]),
-      directive: `Build the most controllable version using concrete visible subject attributes, physical action wording, clear place/time/light and restrained camera language. Use one primary scene per short clip. When an approved product/reference image exists, keep it as visual truth and add motion/camera rather than redesigning it. Accuracy and repeatability outrank spectacle. ${levelDirective}`,
+      directive: hasApprovedImage
+        ? "Build the most controllable version. Treat supplied images as visual truth: preserve identity/product/environment facts and animate them rather than redesigning them. Separate subject motion, environment motion and camera motion; keep timing readable and physically plausible. If START and END are both supplied, design a plausible bridge between them. Respect aspect ratio as a composition decision, not metadata only."
+        : fidelitySensitive
+          ? "Build the most controllable version using concrete visible attributes, physical action wording, clear place/time/light and restrained camera language. Because exact identity/product fidelity matters and no image is supplied, note reference-image preparation as a useful consistency upgrade without blocking text-to-video generation."
+          : "Build the most controllable version using concrete visible subject attributes, physical action wording, clear place/time/light and restrained camera language. Use one primary scene per short clip and keep subject, environment and camera motion distinct. Accuracy and repeatability outrank spectacle.",
     },
     cinematic: {
       primary: impactPrimary.length ? impactPrimary : ["director-visual-language", "shot-size-and-angle-language", "cinematic-story-architecture", "hero-ending"],
-      supporting: unique([...sharedSupporting, "hook-design", "environment-motion", "lighting-mood-design", "director-check"]),
+      supporting: unique([...sharedSupporting, "hook-design", "environment-motion", "lighting-mood-design", "director-check", "regeneration-diagnosis-loop"]),
       avoid: unique([
         "same-camera-plan-as-option-a",
         "flat-opening",
         "weak-payoff",
         "random-camera-combination",
+        "vague-everything-moves",
+        "abrupt-unmotivated-motion",
         "multiple-unrelated-scenes-per-clip",
-        "gratuitous-lens-switching",
         ...(exactTextRequested ? ["generated-exact-text-assumption"] : []),
       ]),
-      directive: `Re-direct the same core idea for substantially stronger visual impact. Preserve subject/action/background facts, but change camera/style architecture from Option A with a stronger angle, lens, reveal, lighting or rhythm. Translate vague style words into concrete visible decisions while keeping the clip physically executable. ${levelDirective}`,
+      directive: hasApprovedImage
+        ? "Re-direct the same core idea for stronger visual impact while keeping the supplied reference facts locked. Change camera/style architecture from Option A through angle, lens, reveal, rhythm, lighting or controlled environment motion. Do not redesign the approved subject/product simply to create impact; animate and photograph it more expressively instead."
+        : "Re-direct the same core idea for substantially stronger visual impact. Preserve subject/action/background facts, but change camera/style architecture from Option A with a stronger angle, lens, reveal, lighting or rhythm. Translate vague style words into concrete visible decisions and keep motion physically executable.",
     },
     userBased: {
       primary: userPrimary,
-      supporting: unique([...sharedSupporting, "mobile-readability", "ending-framing", "motion-wording"]),
+      supporting: unique([...sharedSupporting, "mobile-readability", "ending-framing", "motion-wording", "regeneration-diagnosis-loop"]),
       avoid: unique([
         "new-story-event",
         "character-rewrite",
         "product-fact-change",
         "world-fact-change",
+        "vague-everything-moves",
+        "abrupt-unmotivated-motion",
         "multiple-unrelated-scenes-per-clip",
-        "prompt-level-overwrite",
         ...(exactTextRequested ? ["generated-exact-text-assumption"] : []),
       ]),
-      directive: `Keep the user's story, event order and wording as intact as possible. Evaluate the prompt as SUBJECT + ACTION + BACKGROUND + CAMERA/STYLE. Preserve the materials already present and fill only missing production details minimally; usually improve camera, framing, lens, lighting, physical motion wording and ending composition without rewriting the story. Preserve the user's current prompt granularity whenever possible. ${levelDirective}`,
+      directive: hasApprovedImage
+        ? "Keep the user's story, event order and wording as intact as possible. Treat supplied images as the visual truth. Do not redescribe or redesign what the reference already establishes; add only the motion, environment motion, camera movement, timing, lighting behavior and ending transition needed to animate it clearly."
+        : "Keep the user's story, event order and wording as intact as possible. Evaluate the prompt as SUBJECT + ACTION + BACKGROUND + CAMERA/STYLE. Preserve the materials already present and fill only missing production details minimally; improve camera, framing, lens, lighting, physical motion wording and ending composition without rewriting the story.",
     },
   };
 }
