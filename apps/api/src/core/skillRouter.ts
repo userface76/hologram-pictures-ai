@@ -84,7 +84,26 @@ export function routeHoloSkills(text: string, media?: VideoMediaInputs): SkillRo
   const faceCloseupRequested = has(text, ["얼굴 클로즈업", "face close-up", "face closeup", "extreme close-up face"]);
   if (faceCloseupRequested) detected.push("face-closeup");
 
-  if (!detected.length) detected.push("general-video");
+  const advancedTiming = /\d+(?:\.\d+)?\s*[–—-]\s*\d+(?:\.\d+)?\s*초/.test(text)
+    || has(text, ["depth of field", "camera move", "timing:", "렌즈 / 샷", "렌즈/샷", "타이밍", "0.0–", "poster frame", "포스터 프레임"]);
+  const basicStructured = !advancedTiming && has(text, ["장면 서술", "camera shot", "mood:", "actions:", "dialogue:", "sound:", "카메라연출"]);
+  const nonEmptyLines = text.trim().split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  const oneLineCreative = !advancedTiming && !basicStructured && nonEmptyLines.length <= 2 && text.trim().length <= 220;
+
+  if (advancedTiming) detected.push("prompt-level-3-advanced");
+  else if (basicStructured) detected.push("prompt-level-2-structured");
+  else if (oneLineCreative) detected.push("prompt-level-1-one-line");
+  else detected.push("prompt-level-2-balanced");
+
+  const promptLevelSkills = advancedTiming
+    ? ["advanced-timing-choreography", "lens-dof-progression", "timed-sound-design", "end-frame-hold"]
+    : basicStructured
+      ? ["basic-structured-prompt", "scene-camera-action-dialogue-sound"]
+      : oneLineCreative
+        ? ["one-line-creative-prompt", "granularity-restraint"]
+        : ["balanced-prompt-structure"];
+
+  if (!detected.some((item) => !item.startsWith("prompt-level-"))) detected.unshift("general-video");
 
   const hasReference = Boolean(media?.referenceImageUrl);
   const hasFrame = Boolean(media?.firstFrameUrl || media?.lastFrameUrl);
@@ -95,6 +114,8 @@ export function routeHoloSkills(text: string, media?: VideoMediaInputs): SkillRo
     "subject-attribute-specificity",
     "physical-action-description",
     "background-place-time-light",
+    "prompt-granularity-selection",
+    ...(advancedTiming ? ["timing-feasibility", "continuity-across-timed-beats"] : []),
     ...(hasReference ? ["world-asset-identity-lock", "reference-driven-video-prompting"] : ["subject-clarity"]),
     ...(hasFrame ? ["start-end-frame-continuity"] : []),
     ...(hasApprovedImage && productLike ? ["image-first-product-control"] : []),
@@ -102,18 +123,21 @@ export function routeHoloSkills(text: string, media?: VideoMediaInputs): SkillRo
     "lighting-continuity-design",
     "camera-restraint",
     ...stableGenre,
-  ]).slice(0, 10);
+  ]).slice(0, 11);
 
   const impactPrimary = unique([
     "director-visual-language",
     "shot-size-and-angle-language",
     "camera-purpose-mapping",
     "visible-style-translation",
+    "prompt-granularity-selection",
+    ...(advancedTiming ? ["shot-progression", "timed-payoff-design"] : []),
     ...impactGenre,
-  ]).filter((skill) => !stablePrimary.includes(skill)).slice(0, 9);
+  ]).filter((skill) => !stablePrimary.includes(skill)).slice(0, 10);
 
   const userPrimary = unique([
     "preserve-user-intent",
+    "preserve-prompt-granularity",
     "four-material-prompt-formula",
     "subject-attribute-specificity",
     "physical-action-description",
@@ -124,15 +148,25 @@ export function routeHoloSkills(text: string, media?: VideoMediaInputs): SkillRo
     "framing-enhancement",
     "lighting-source-rule",
     ...userGenre,
-  ]).slice(0, 10);
+  ]).slice(0, 11);
 
   const sharedSupporting = [
     "duration-feasibility",
     "one-scene-per-clip",
     "abstract-to-visible-description",
+    ...promptLevelSkills,
+    ...(advancedTiming ? ["physical-realism-check", "final-hold-when-useful"] : []),
     ...(exactTextRequested ? ["text-postproduction"] : []),
     ...(faceCloseupRequested ? ["face-fidelity-fallback"] : []),
   ];
+
+  const levelDirective = advancedTiming
+    ? "The user is operating at Level 3 advanced timing. Preserve the total duration, validate each timed beat, and simplify only when camera/lens/action density exceeds feasible motion budget."
+    : basicStructured
+      ? "The user is operating at Level 2 structured prompting. Keep scene, camera, mood, actions, dialogue and sound organized without unnecessarily expanding into a timed screenplay."
+      : oneLineCreative
+        ? "The user is operating at Level 1 one-line prompting. Keep the creative concept compact; do not inflate it into a full shot list unless reliability truly requires one extra layer of detail."
+        : "Use balanced prompt detail: enough structure for control without unnecessary technical density.";
 
   return {
     detected,
@@ -145,9 +179,10 @@ export function routeHoloSkills(text: string, media?: VideoMediaInputs): SkillRo
         "identity-drift",
         "decorative-motion",
         "multiple-unrelated-scenes-per-clip",
+        "unnecessary-granularity-escalation",
         ...(exactTextRequested ? ["generated-exact-text-assumption"] : []),
       ]),
-      directive: "Build the most controllable version using concrete visible subject attributes, physical action wording, clear place/time/light and restrained camera language. Use one primary scene per short clip. When an approved product/reference image exists, keep it as visual truth and add motion/camera rather than redesigning it. Accuracy and repeatability outrank spectacle.",
+      directive: `Build the most controllable version using concrete visible subject attributes, physical action wording, clear place/time/light and restrained camera language. Use one primary scene per short clip. When an approved product/reference image exists, keep it as visual truth and add motion/camera rather than redesigning it. Accuracy and repeatability outrank spectacle. ${levelDirective}`,
     },
     cinematic: {
       primary: impactPrimary.length ? impactPrimary : ["director-visual-language", "shot-size-and-angle-language", "cinematic-story-architecture", "hero-ending"],
@@ -158,9 +193,10 @@ export function routeHoloSkills(text: string, media?: VideoMediaInputs): SkillRo
         "weak-payoff",
         "random-camera-combination",
         "multiple-unrelated-scenes-per-clip",
+        "gratuitous-lens-switching",
         ...(exactTextRequested ? ["generated-exact-text-assumption"] : []),
       ]),
-      directive: "Re-direct the same core idea for substantially stronger visual impact. Preserve subject/action/background facts, but change camera/style architecture from Option A with a stronger angle, lens, reveal, lighting or rhythm. Translate vague style words into concrete visible decisions while keeping the clip physically executable.",
+      directive: `Re-direct the same core idea for substantially stronger visual impact. Preserve subject/action/background facts, but change camera/style architecture from Option A with a stronger angle, lens, reveal, lighting or rhythm. Translate vague style words into concrete visible decisions while keeping the clip physically executable. ${levelDirective}`,
     },
     userBased: {
       primary: userPrimary,
@@ -171,9 +207,10 @@ export function routeHoloSkills(text: string, media?: VideoMediaInputs): SkillRo
         "product-fact-change",
         "world-fact-change",
         "multiple-unrelated-scenes-per-clip",
+        "prompt-level-overwrite",
         ...(exactTextRequested ? ["generated-exact-text-assumption"] : []),
       ]),
-      directive: "Keep the user's story, event order and wording as intact as possible. Evaluate the prompt as SUBJECT + ACTION + BACKGROUND + CAMERA/STYLE. Preserve the materials already present and fill only missing production details minimally; usually improve camera, framing, lens, lighting, physical motion wording and ending composition without rewriting the story.",
+      directive: `Keep the user's story, event order and wording as intact as possible. Evaluate the prompt as SUBJECT + ACTION + BACKGROUND + CAMERA/STYLE. Preserve the materials already present and fill only missing production details minimally; usually improve camera, framing, lens, lighting, physical motion wording and ending composition without rewriting the story. Preserve the user's current prompt granularity whenever possible. ${levelDirective}`,
     },
   };
 }
