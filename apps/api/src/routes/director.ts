@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { generateDirectorRecommendations } from "../core/holoDirector.js";
+import { generateDirectorRecommendationsV2 } from "../core/holoDirectorV2.js";
 
 export const directorRouter = Router();
 
@@ -18,7 +18,7 @@ const directorSchema = z.object({
 directorRouter.post("/director", async (req, res, next) => {
   try {
     const input = directorSchema.parse(req.body);
-    const result = await generateDirectorRecommendations(input.command, input.images);
+    const result = await generateDirectorRecommendationsV2(input.command, input.images);
     res.json(result);
   } catch (error) {
     next(error);
