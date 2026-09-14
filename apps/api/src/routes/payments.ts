@@ -5,6 +5,7 @@ import {
   createPendingPayment,
   createRefundRequest,
   ensureBillingCustomer,
+  getBillingSummary,
   getPaymentForUser,
   grantPaymentCredits,
   markPaymentFailed,
@@ -22,6 +23,11 @@ function userIdOf(req: any) {
 
 paymentsRouter.get("/billing/plans", (_req, res) => {
   res.json({ plans: publicHoloPlans(), tossConfigured: isTossConfigured() });
+});
+
+paymentsRouter.get("/billing/summary", async (req, res, next) => {
+  try { res.json({ billing: await getBillingSummary(userIdOf(req)) }); }
+  catch (error) { next(error); }
 });
 
 const prepareSchema = z.object({ planId: z.string().min(1).max(40) });
