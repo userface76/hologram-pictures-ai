@@ -15,10 +15,18 @@ const directorSchema = z.object({
   images: imagesSchema,
 });
 
+function withDefaultDuration(command: string) {
+  return /(\d{1,2})\s*초/.test(command)
+    ? command
+    : `${command}\n\n[HOLO DEFAULT DURATION: 10 seconds. Apply only because the user did not specify a duration.]`;
+}
+
 directorRouter.post("/director", async (req, res, next) => {
   try {
     const input = directorSchema.parse(req.body);
-    const result = await generateDirectorRecommendationsV2(input.command, input.images);
+    const result = await generateDirectorRecommendationsV2(withDefaultDuration(input.command), input.images);
+    result.plan.duration = /(\d{1,2})\s*초/.test(input.command) ? result.plan.duration : 10;
+    result.analysis.duration = /(\d{1,2})\s*초/.test(input.command) ? result.analysis.duration : 10;
     res.json(result);
   } catch (error) {
     next(error);
