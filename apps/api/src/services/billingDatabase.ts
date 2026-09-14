@@ -8,6 +8,26 @@ function dbOrThrow() {
   return db;
 }
 
+export async function getBillingSummary(userId: string) {
+  const db = dbOrThrow();
+  const [wallet, payments, refunds, subscription] = await Promise.all([
+    db.from("wallets").select("balance_seconds,updated_at").eq("user_id", userId).maybeSingle(),
+    db.from("payments").select("id,order_id,plan_id,order_name,amount_krw,credit_seconds,currency,status,method,approved_at,created_at,updated_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
+    db.from("refund_requests").select("id,order_id,reason,requested_amount_krw,status,created_at,updated_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
+    db.from("subscriptions").select("id,plan_id,status,current_period_start,current_period_end,next_charge_at,created_at,updated_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  if (wallet.error) throw wallet.error;
+  if (payments.error) throw payments.error;
+  if (refunds.error) throw refunds.error;
+  if (subscription.error) throw subscription.error;
+  return {
+    wallet: wallet.data ?? { balance_seconds: 0 },
+    payments: payments.data ?? [],
+    refundRequests: refunds.data ?? [],
+    subscription: subscription.data ?? null,
+  };
+}
+
 export async function ensureBillingCustomer(userId: string) {
   const db = dbOrThrow();
   const existing = await db.from("billing_customers").select("user_id,toss_customer_key").eq("user_id", userId).maybeSingle();
