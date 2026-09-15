@@ -23,6 +23,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   art: "아트 · 실험",
 };
 
+const CATEGORY_ORDER = ["brand", "cinematic", "shortform", "food", "character", "fantasy", "fashion", "art"];
+
 const PREFIX_CATEGORY: Record<string, string> = {
   "01": "brand",
   "02": "cinematic",
@@ -36,7 +38,9 @@ const PREFIX_CATEGORY: Record<string, string> = {
 
 let activeModal: HTMLElement | null = null;
 let currentItems: ShowcaseItem[] = [];
+let activeCategory = "all";
 let mountedLanding: HTMLElement | null = null;
+let cardObserver: IntersectionObserver | null = null;
 
 function escapeHtml(value: unknown) {
   return String(value ?? "")
@@ -59,16 +63,19 @@ function isPortrait(item: ShowcaseItem) {
 function cardHtml(item: ShowcaseItem) {
   const portrait = isPortrait(item);
   return `
-    <article class="holoShowcaseCard ${portrait ? "isPortrait" : ""}" tabindex="0" role="button"
+    <article class="holoShowcaseCard ${portrait ? "isPortrait" : "isLandscape"}" tabindex="0" role="button"
       data-showcase-id="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.title)} 영상 보기">
       <div class="holoShowcaseMedia" data-ratio="${portrait ? "9:16" : "16:9"}">
         <video muted loop playsinline preload="metadata" src="${escapeHtml(item.url)}"></video>
         <div class="holoShowcaseShade"></div>
-        <div class="holoShowcasePlay">▶</div>
-      </div>
-      <div class="holoShowcaseMeta">
-        <div><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(categoryLabel(item.category))}</span></div>
-        <em>${escapeHtml(item.aspectRatio || (portrait ? "9:16" : "16:9"))}</em>
+        <div class="holoShowcasePlay" aria-hidden="true">▶</div>
+        <div class="holoShowcaseMeta">
+          <div>
+            <strong>${escapeHtml(item.title)}</strong>
+            <span>${escapeHtml(categoryLabel(item.category))}</span>
+          </div>
+          <em>${escapeHtml(item.aspectRatio || (portrait ? "9:16" : "16:9"))}</em>
+        </div>
       </div>
     </article>`;
 }
@@ -114,30 +121,73 @@ function wireCards(section: HTMLElement) {
     });
   });
 
-  const observer = new IntersectionObserver((entries) => {
+  cardObserver?.disconnect();
+  const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  cardObserver = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
       const video = entry.target as HTMLVideoElement;
-      if (entry.isIntersecting && entry.intersectionRatio > 0.2) {
+      if (!reduceMotion && entry.isIntersecting && entry.intersectionRatio > 0.2) {
         void video.play().catch(() => {});
       } else {
         video.pause();
       }
     });
-  }, { threshold: [0, .2, .5], rootMargin: "100px" });
+  }, { threshold: [0, .2, .5], rootMargin: "120px" });
 
-  section.querySelectorAll<HTMLVideoElement>(".holoShowcaseCard video").forEach((video) => observer.observe(video));
+  section.querySelectorAll<HTMLVideoElement>(".holoShowcaseCard video").forEach((video) => cardObserver?.observe(video));
+}
+
+function visibleItems() {
+  if (activeCategory === "all") return currentItems;
+  return currentItems.filter((item) => item.category === activeCategory);
+}
+
+function renderGrid(section: HTMLElement) {
+  const viewport = section.querySelector<HTMLElement>(".holoShowcaseViewport");
+  if (!viewport) return;
+  const items = visibleItems();
+  if (!items.length) {
+    viewport.innerHTML = '<div class="holoShowcaseEmpty">이 분야에는 아직 공개된 샘플 영상이 없습니다.</div>';
+    return;
+  }
+  viewport.innerHTML = `<div class="holoShowcaseGrid">${items.map(cardHtml).join("")}</div>`;
+  wireCards(section);
+}
+
+function renderFilters(section: HTMLElement) {
+  const filters = section.querySelector<HTMLElement>(".holoShowcaseFilters");
+  if (!filters) return;
+  const counts = new Map<string, number>();
+  currentItems.forEach((item) => counts.set(item.category, (counts.get(item.category) || 0) + 1));
+  if (activeCategory !== "all" && !counts.get(activeCategory)) activeCategory = "all";
+
+  const buttons = [
+    `<button type="button" data-showcase-filter="all" class="${activeCategory === "all" ? "isActive" : ""}" aria-pressed="${activeCategory === "all"}">전체 <span>${currentItems.length}</span></button>`,
+    ...CATEGORY_ORDER.filter((category) => (counts.get(category) || 0) > 0).map((category) =>
+      `<button type="button" data-showcase-filter="${escapeHtml(category)}" class="${activeCategory === category ? "isActive" : ""}" aria-pressed="${activeCategory === category}">${escapeHtml(categoryLabel(category))} <span>${counts.get(category) || 0}</span></button>`
+    ),
+  ];
+  filters.innerHTML = buttons.join("");
+  filters.querySelectorAll<HTMLButtonElement>("button[data-showcase-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      activeCategory = button.dataset.showcaseFilter || "all";
+      renderFilters(section);
+      renderGrid(section);
+    });
+  });
 }
 
 function renderItems(section: HTMLElement, items: ShowcaseItem[]) {
-  const viewport = section.querySelector<HTMLElement>(".holoShowcaseViewport");
-  if (!viewport) return;
-  currentItems = items.slice(0, 60);
+  currentItems = items.slice(0, 100);
   if (!currentItems.length) {
-    viewport.innerHTML = '<div class="holoShowcaseEmpty">아직 공개된 샘플 영상이 없습니다. 관리자 계정에서 샘플 영상을 올리면 이곳에 자동으로 표시됩니다.</div>';
+    const filters = section.querySelector<HTMLElement>(".holoShowcaseFilters");
+    if (filters) filters.innerHTML = "";
+    const viewport = section.querySelector<HTMLElement>(".holoShowcaseViewport");
+    if (viewport) viewport.innerHTML = '<div class="holoShowcaseEmpty">아직 공개된 샘플 영상이 없습니다. 관리자 계정에서 샘플 영상을 올리면 이곳에 자동으로 표시됩니다.</div>';
     return;
   }
-  viewport.innerHTML = `<div class="holoShowcaseGrid">${currentItems.map(cardHtml).join("")}</div>`;
-  wireCards(section);
+  renderFilters(section);
+  renderGrid(section);
 }
 
 async function loadItems(section: HTMLElement) {
@@ -295,10 +345,11 @@ function mountShowcase() {
       <div>
         <span class="holoShowcaseEyebrow">HOLO SHOWCASE · MADE WITH HOLO</span>
         <h2>샘플 영상 둘러보기</h2>
-        <p>HOLO로 만든 대표 영상 예시를 바로 확인하세요. PC에서는 4개씩, 모바일에서는 한 작품씩 크게 볼 수 있습니다.</p>
+        <p>분야별 샘플을 골라 보고, 화면을 가득 채우는 영상 월에서 바로 재생해 보세요. PC는 4열, 모바일은 화면에 맞춰 자동 배열됩니다.</p>
       </div>
       <button class="holoShowcaseAdmin" type="button" hidden>＋ 샘플 영상 올리기</button>
     </div>
+    <nav class="holoShowcaseFilters" aria-label="샘플 영상 분야"></nav>
     <div class="holoShowcaseViewport"><div class="holoShowcaseEmpty">쇼케이스를 불러오는 중입니다.</div></div>`;
   if (footer) landing.insertBefore(section, footer);
   else landing.appendChild(section);
