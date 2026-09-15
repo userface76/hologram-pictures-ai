@@ -61,9 +61,11 @@ function cardHtml(item: ShowcaseItem) {
   return `
     <article class="holoShowcaseCard ${portrait ? "isPortrait" : ""}" tabindex="0" role="button"
       data-showcase-id="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.title)} 영상 보기">
-      <video muted loop playsinline preload="metadata" src="${escapeHtml(item.url)}"></video>
-      <div class="holoShowcaseShade"></div>
-      <div class="holoShowcasePlay">▶</div>
+      <div class="holoShowcaseMedia" data-ratio="${portrait ? "9:16" : "16:9"}">
+        <video muted loop playsinline preload="metadata" src="${escapeHtml(item.url)}"></video>
+        <div class="holoShowcaseShade"></div>
+        <div class="holoShowcasePlay">▶</div>
+      </div>
       <div class="holoShowcaseMeta">
         <div><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(categoryLabel(item.category))}</span></div>
         <em>${escapeHtml(item.aspectRatio || (portrait ? "9:16" : "16:9"))}</em>
@@ -115,13 +117,13 @@ function wireCards(section: HTMLElement) {
   const observer = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
       const video = entry.target as HTMLVideoElement;
-      if (entry.isIntersecting && entry.intersectionRatio > 0.15) {
+      if (entry.isIntersecting && entry.intersectionRatio > 0.2) {
         void video.play().catch(() => {});
       } else {
         video.pause();
       }
     });
-  }, { threshold: [0, .15, .5], rootMargin: "120px" });
+  }, { threshold: [0, .2, .5], rootMargin: "100px" });
 
   section.querySelectorAll<HTMLVideoElement>(".holoShowcaseCard video").forEach((video) => observer.observe(video));
 }
@@ -129,18 +131,12 @@ function wireCards(section: HTMLElement) {
 function renderItems(section: HTMLElement, items: ShowcaseItem[]) {
   const viewport = section.querySelector<HTMLElement>(".holoShowcaseViewport");
   if (!viewport) return;
-  currentItems = items.slice(0, 18);
+  currentItems = items.slice(0, 60);
   if (!currentItems.length) {
     viewport.innerHTML = '<div class="holoShowcaseEmpty">아직 공개된 샘플 영상이 없습니다. 관리자 계정에서 샘플 영상을 올리면 이곳에 자동으로 표시됩니다.</div>';
     return;
   }
-  const cards = currentItems.map(cardHtml).join("");
-  const speed = Math.max(34, currentItems.length * 5.2);
-  viewport.innerHTML = `
-    <div class="holoShowcaseTrack" style="--showcase-speed:${speed}s">
-      <div class="holoShowcaseGroup">${cards}</div>
-      <div class="holoShowcaseGroup" aria-hidden="true">${cards}</div>
-    </div>`;
+  viewport.innerHTML = `<div class="holoShowcaseGrid">${currentItems.map(cardHtml).join("")}</div>`;
   wireCards(section);
 }
 
@@ -298,8 +294,8 @@ function mountShowcase() {
     <div class="holoShowcaseHead">
       <div>
         <span class="holoShowcaseEyebrow">HOLO SHOWCASE · MADE WITH HOLO</span>
-        <h2>만들어진 작품을 먼저 만나보세요</h2>
-        <p>HOLO로 제작한 영상 예시가 자동 재생됩니다. 마음에 드는 작품을 클릭하면 크게 볼 수 있습니다.</p>
+        <h2>샘플 영상 둘러보기</h2>
+        <p>HOLO로 만든 대표 영상 예시를 바로 확인하세요. PC에서는 4개씩, 모바일에서는 한 작품씩 크게 볼 수 있습니다.</p>
       </div>
       <button class="holoShowcaseAdmin" type="button" hidden>＋ 샘플 영상 올리기</button>
     </div>
