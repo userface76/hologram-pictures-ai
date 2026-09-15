@@ -12,7 +12,7 @@ const app = express();
 const port = Number(process.env.PORT || 8080);
 app.use(cors({ origin: process.env.CORS_ORIGIN?.split(",") || true }));
 app.use(express.json({ limit: "45mb" }));
-app.get("/health", (_req, res) => res.json({ ok: true, service: "hologram-api", version: "0.7.0", assistant: "HOLO", auth: "supabase", time: new Date().toISOString() }));
+app.get("/health", (_req, res) => res.json({ ok: true, service: "hologram-api", version: "0.8.0", assistant: "HOLO", auth: "supabase", time: new Date().toISOString() }));
 
 // Public showcase is visible on the landing page without a member session.
 app.use(publicShowcaseRouter);
@@ -24,6 +24,11 @@ app.use("/webhooks", tossWebhookRouter);
 app.use("/api", requireAuth, directorRouter, paymentsRouter, showcaseAdminRouter, apiRouter);
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);
-  res.status(400).json({ error: err?.message || "unknown_error", code: err?.code });
+  const status = Number(err?.statusCode || err?.status || 400);
+  res.status(Number.isFinite(status) && status >= 400 && status <= 599 ? status : 400).json({
+    error: err?.message || "unknown_error",
+    code: err?.code,
+    details: err?.details,
+  });
 });
 app.listen(port, "0.0.0.0", () => console.log(`HOLOGRAM API listening on :${port}`));
