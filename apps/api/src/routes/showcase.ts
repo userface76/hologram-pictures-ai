@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Router } from "express";
 import { z } from "zod";
 import { getAccountSummary } from "../services/database.js";
+import { deleteShowcaseVideoByUrl } from "../services/showcaseCleanup.js";
 import {
   readShowcaseManifest,
   uploadShowcaseVideoDataUrl,
@@ -29,6 +30,10 @@ const uploadSchema = z.object({
   category: categorySchema,
   aspectRatio: z.string().max(20).optional(),
   dataUrl: z.string().min(32),
+});
+
+const deleteSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(100),
 });
 
 function userIdOf(req: any) {
@@ -74,6 +79,31 @@ showcaseAdminRouter.post("/showcase/upload", async (req, res, next) => {
     };
     await writeShowcaseManifest([item, ...existing].slice(0, 100));
     res.status(201).json({ item });
+  } catch (error) {
+    next(error);
+  }
+});
+
+showcaseAdminRouter.delete("/showcase", async (req, res, next) => {
+  try {
+    if (!(await assertAdmin(req, res))) return;
+    const input = deleteSchema.parse(req.body);
+    const existing = await readShowcaseManifest();
+    const requested = new Set(input.ids);
+    const removed = existing.filter((item) => requested.has(item.id));
+    const remaining = existing.filter((item) => !requested.has(item.id));
+
+    if (!removed.length) {
+      res.json({ deleted: 0, ids: [] });
+      return;
+    }
+
+    await writeShowcaseManifest(remaining);
+    const cleanup = await Promise.allSettled(removed.map((item) => deleteShowcaseVideoByUrl(item.url)));
+    const cleanupFailures = cleanup.filter((result) => result.status === "rejected").length;
+    if (cleanupFailures) console.warn(`Showcase cleanup failed for ${cleanupFailures} object(s)`);
+
+    res.json({ deleted: removed.length, ids: removed.map((item) => item.id), cleanupFailures });
   } catch (error) {
     next(error);
   }
