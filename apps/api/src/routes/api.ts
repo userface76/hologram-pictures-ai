@@ -19,6 +19,14 @@ import {
 } from "../services/database.js";
 import { archiveRemoteVideo, isR2Configured, uploadImageDataUrl } from "../services/r2Storage.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
+import {
+  isRenderCreditEnforced,
+  linkRenderCreditReservation,
+  releaseRenderCreditReservation,
+  releaseRenderCreditsForJob,
+  reserveRenderCredits,
+  settleRenderCreditsForJob,
+} from "../services/renderCredits.js";
 
 export const apiRouter = Router();
 
@@ -81,6 +89,48 @@ function withMedia(plan: any, input: z.infer<typeof commandSchema>) {
   };
 }
 
+function publicCreditState(credit: any) {
+  return {
+    enforced: Boolean(credit?.enforced),
+    estimatedCredits: Number(credit?.estimate?.credits || 0),
+    durationSeconds: Number(credit?.estimate?.durationSeconds || 0),
+    resolution: credit?.estimate?.resolution || null,
+    balanceSeconds: credit?.wallet?.balanceSeconds ?? null,
+    reservedSeconds: credit?.wallet?.reservedSeconds ?? null,
+  };
+}
+
+async function createRenderedJob(userId: string, plan: any) {
+  await ensureUserAccount(userId);
+  const credit = await reserveRenderCredits(userId, plan);
+  const project = await createAndPersistProject(userId, plan);
+  const provider = getVideoProvider(plan.model);
+  let job: any;
+
+  try {
+    job = await provider.create(plan);
+  } catch (error) {
+    try { await releaseRenderCreditReservation(userId, credit.reservationId); }
+    catch (releaseError) { console.error("HOLO credit reservation release failed after provider create error:", releaseError); }
+    throw error;
+  }
+
+  job = { ...job, userId, ...(project?.id ? { projectId: project.id } : {}) };
+
+  if (credit.reservationId) {
+    try { await linkRenderCreditReservation(userId, credit.reservationId, job.id); }
+    catch (error) {
+      // Do not give credits back after the provider accepted the paid render request.
+      // The reservation remains RESERVED for reconciliation instead of granting a free render.
+      console.error("HOLO credit reservation could not be linked to render job:", { userId, jobId: job.id, reservationId: credit.reservationId, error });
+    }
+  }
+
+  jobStore.set(job);
+  await persistJob(userId, job);
+  return { project, job, credit: publicCreditState(credit) };
+}
+
 apiRouter.get("/system/status", (req, res) => res.json({
   ok: true,
   api: true,
@@ -89,6 +139,7 @@ apiRouter.get("/system/status", (req, res) => res.json({
   openai: Boolean(process.env.OPENAI_API_KEY),
   minimax: Boolean(process.env.MINIMAX_API_KEY),
   demoVideoMode: (process.env.DEMO_VIDEO_MODE || "true").toLowerCase() === "true",
+  creditEnforced: isRenderCreditEnforced(),
   supabase: isSupabaseConfigured(),
   r2: isR2Configured(),
 }));
@@ -152,6 +203,15 @@ apiRouter.get("/jobs/:id", async (req, res, next) => {
       if (provider.status) job = await provider.status(job);
     }
 
+    let credit: any = null;
+    if (job.status === "completed") {
+      try { credit = await settleRenderCreditsForJob(userId, job.id); }
+      catch (error) { console.error("HOLO render credit settlement failed:", error); }
+    } else if (job.status === "failed") {
+      try { credit = await releaseRenderCreditsForJob(userId, job.id); }
+      catch (error) { console.error("HOLO render credit release failed:", error); }
+    }
+
     if (job.status === "completed" && job.sourceUrl && !job.storageUrl && isR2Configured()) {
       try {
         const archived = await archiveRemoteVideo(userId, job.sourceUrl, job.id);
@@ -172,7 +232,7 @@ apiRouter.get("/jobs/:id", async (req, res, next) => {
       catch (error) { console.warn("Supabase video persistence skipped:", error); }
     }
 
-    res.json({ job });
+    res.json({ job, ...(credit ? { credit } : {}) });
   } catch (e) { next(e); }
 });
 
@@ -185,13 +245,8 @@ apiRouter.post("/command", async (req, res, next) => {
     const plan = withMedia(interpreted.plan, input);
     if (!input.autoRender) return res.json({ ...interpreted, plan });
 
-    const project = await createAndPersistProject(userId, plan);
-    const provider = getVideoProvider(plan.model);
-    let job = await provider.create(plan);
-    job = { ...job, userId, ...(project?.id ? { projectId: project.id } : {}) };
-    jobStore.set(job);
-    await persistJob(userId, job);
-    res.json({ ...interpreted, plan, project, job });
+    const rendered = await createRenderedJob(userId, plan);
+    res.json({ ...interpreted, plan, ...rendered });
   } catch (e) { next(e); }
 });
 
@@ -202,12 +257,7 @@ apiRouter.post("/render", async (req, res, next) => {
     const media = mediaOf(input);
     const interpreted = await interpretWithAstra(input.command, media);
     const plan = withMedia(interpreted.plan, input);
-    const project = await createAndPersistProject(userId, plan);
-    const provider = getVideoProvider(plan.model);
-    let job = await provider.create(plan);
-    job = { ...job, userId, ...(project?.id ? { projectId: project.id } : {}) };
-    jobStore.set(job);
-    await persistJob(userId, job);
-    res.status(202).json({ ...interpreted, plan, project, job });
+    const rendered = await createRenderedJob(userId, plan);
+    res.status(202).json({ ...interpreted, plan, ...rendered });
   } catch (e) { next(e); }
 });
