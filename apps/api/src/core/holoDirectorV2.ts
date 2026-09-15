@@ -57,11 +57,19 @@ function readSkill(name: string) {
   return "";
 }
 
-function loadRuntimeSkills() {
+function loadRuntimeSkills(routing?: SkillRoutingPlan) {
   const base = readSkill("HOLO_DIRECTOR_RUNTIME_v1.6.md");
-  const routing = readSkill("HOLO_DIRECTOR_RUNTIME_v1.7.md");
-  const merged = [base, routing].filter(Boolean).join("\n\n--- ROUTING OVERLAY ---\n\n");
-  return merged ? merged.slice(0, 36000) : FALLBACK_SKILLS;
+  const routingOverlay = readSkill("HOLO_DIRECTOR_RUNTIME_v1.7.md");
+  const specialized: string[] = [];
+
+  if (routing?.detected.includes("commercial-product")) {
+    specialized.push(readSkill("HOLO_MARKETING_COMMERCIAL_SKILL_v1.0.md"));
+  }
+
+  const merged = [base, routingOverlay, ...specialized]
+    .filter(Boolean)
+    .join("\n\n--- ACTIVE SPECIALIZED SKILL ---\n\n");
+  return merged ? merged.slice(0, 48000) : FALLBACK_SKILLS;
 }
 
 function mediaNotes(media?: VideoMediaInputs) {
@@ -77,7 +85,7 @@ function routeBlock(label: string, route: RoutedCandidate) {
 }
 
 function buildInput(text: string, media: VideoMediaInputs | undefined, routing: SkillRoutingPlan) {
-  const skillPack = loadRuntimeSkills();
+  const skillPack = loadRuntimeSkills(routing);
   const system = `You are HOLO DIRECTOR MODE for HOLOGRAM PICTURES AI.\nReturn ONLY valid JSON.\n\nUse the HOLO runtime skill knowledge as directing rules, but obey the deterministic ROUTING PLAN below. Do not make A and B two paraphrases of the same plan.\n\nHOLO RUNTIME SKILL KNOWLEDGE:\n${skillPack}\n\nDETECTED ROUTES: ${routing.detected.join(", ")}\n\n${routeBlock("OPTION A / CONTROL", routing.stable)}\n\n${routeBlock("OPTION B / IMPACT", routing.cinematic)}\n\n${routeBlock("OPTION C / USER BASED", routing.userBased)}\n\nDIFFERENCE GATE:\n1. A and B must use different primary skill families.\n2. A and B must use different opening camera/shot strategy.\n3. B must contain at least one meaningful impact decision absent from A.\n4. A must contain at least one control/continuity decision absent from B.\n5. C must preserve the user's story, subject order, event order and core intent; only add camera/framing/lens/lighting/motion/ending production language.\n6. Exactly one option has recommended=true.\n\nDo not invent visual facts not supported by the user's text or supplied images. Preserve names, brands, product facts and character identity. Respect duration feasibility and model constraints.\n\nJSON schema:\n{\n  \"analysis\": {\"intent\":string,\"subject\":string,\"format\":string,\"duration\":number,\"risks\":string[]},\n  \"plan\": {\"title\":string,\"model\":string,\"duration\":number,\"aspectRatio\":string,\"resolution\":string,\"audio\":boolean,\"style\":string,\"camera\":string[],\"scenes\":[{\"index\":number,\"seconds\":number,\"description\":string}]},\n  \"candidates\": [\n    {\"id\":\"stable\",\"label\":string,\"summary\":string,\"reason\":string,\"recommended\":boolean,\"score\":number,\"skills\":string[],\"prompt\":string},\n    {\"id\":\"cinematic\",\"label\":string,\"summary\":string,\"reason\":string,\"recommended\":boolean,\"score\":number,\"skills\":string[],\"prompt\":string},\n    {\"id\":\"user_based\",\"label\":string,\"summary\":string,\"reason\":string,\"recommended\":boolean,\"score\":number,\"preservationScore\":number,\"skills\":string[],\"prompt\":string}\n  ]\n}\n\nDefaults: model=minimax-h3, duration 4-15 seconds, resolution=768p. Use 9:16 for explicit vertical/short-form requests; otherwise preserve requested format or use 16:9.\n\nMEDIA:\n${mediaNotes(media)}\n\nUSER IDEA:\n${text}`;
 
   const content: any[] = [{ type: "input_text", text: system }];
