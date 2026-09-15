@@ -1,6 +1,6 @@
 # HOLOGRAM PICTURES AI
 
-> **말하면(글을쓰면), 영상이 된다.**
+> **글을쓰면, 영상이 된다.**
 
 A Korean-first conversational AI video operating system. Instead of navigating a conventional form-heavy video website, users speak or type an intent and HOLOGRAM CORE turns it into a production plan, then routes it to a video engine.
 
