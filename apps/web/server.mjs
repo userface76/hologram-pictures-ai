@@ -42,6 +42,28 @@ function sendFile(res, filePath) {
   });
 }
 
+function sendDetailPage(res, filePath) {
+  fs.readFile(filePath, "utf8", (err, html) => {
+    if (err) {
+      res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("Not found");
+      return;
+    }
+    let output = html;
+    if (!output.includes("/holo-detail-showcase.css")) {
+      output = output.replace("</head>", '  <link rel="stylesheet" href="/holo-detail-showcase.css" />\n</head>');
+    }
+    if (!output.includes("/holo-detail-showcase.js")) {
+      output = output.replace("</body>", '  <script src="/holo-detail-showcase.js" defer></script>\n</body>');
+    }
+    res.writeHead(200, {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-cache"
+    });
+    res.end(output);
+  });
+}
+
 function handler(req, res) {
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
@@ -50,7 +72,7 @@ function handler(req, res) {
     res.end(JSON.stringify({
       ok: true,
       service: "hologram-web",
-      version: "0.2.2",
+      version: "0.2.3",
       port: req.socket.localPort,
       time: new Date().toISOString()
     }));
@@ -65,7 +87,11 @@ function handler(req, res) {
 
   fs.stat(filePath, (err, stat) => {
     if (!err && stat.isFile()) {
-      sendFile(res, filePath);
+      if (safePath === "/holo-detail.html" || safePath.endsWith(`${path.sep}holo-detail.html`)) {
+        sendDetailPage(res, filePath);
+      } else {
+        sendFile(res, filePath);
+      }
       return;
     }
 
