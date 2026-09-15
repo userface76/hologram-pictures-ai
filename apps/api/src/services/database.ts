@@ -25,7 +25,7 @@ export async function getAccountSummary(userId: string) {
   if (!db) return null;
   const [{ data: profile, error: profileError }, { data: wallet, error: walletError }] = await Promise.all([
     db.from("profiles").select("user_id,email,display_name,role,status,created_at,updated_at").eq("user_id", userId).maybeSingle(),
-    db.from("wallets").select("balance_usd,updated_at").eq("user_id", userId).maybeSingle(),
+    db.from("wallets").select("balance_usd,balance_seconds,reserved_seconds,updated_at").eq("user_id", userId).maybeSingle(),
   ]);
   if (profileError) throw profileError;
   if (walletError) throw walletError;
