@@ -38,7 +38,7 @@ function minimaxErrorMessage(status: number, data: Record<string, any>) {
   const type = String(data?.error?.type || data?.type || "");
   const message = String(data?.error?.message || data?.message || "");
   if (status === 402 || type.includes("insufficient_balance") || message.includes("insufficient balance") || message.includes("1008")) {
-    return "MiniMax API 잔액이 부족합니다. MiniMax 결제/잔액을 확인한 뒤 다시 시도해 주세요. 테스트만 할 때는 Railway의 DEMO_VIDEO_MODE=true를 사용할 수 있습니다.";
+    return "HOLO AI 영상 생성 잔액이 부족합니다. 충전 후 다시 시도해 주세요.";
   }
   return `MiniMax H3 create failed (${status}): ${message || JSON.stringify(data)}`;
 }
