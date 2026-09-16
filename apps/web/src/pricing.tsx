@@ -30,10 +30,10 @@ const TOSS_CLIENT_KEY = import.meta.env.VITE_TOSS_CLIENT_KEY || "";
 const TOSS_SDK_URL = "https://js.tosspayments.com/v2/standard";
 
 const plans: Plan[] = [
-  { id: "free", name: "FREE", kicker: "HOLO 체험", price: "0원", credits: "5초 체험 크레딧", videos: "5초 영상 1회", features: ["MiniMax H3 체험", "이미지 → 영상", "HOLO 프롬프트 분석", "개인 보관함"] },
-  { id: "starter", name: "STARTER", kicker: "개인 · 입문용", price: "29,000원", credits: "150초 / 월", videos: "10초 기준 최대 15편", features: ["MiniMax H3", "이미지 · 텍스트 → 영상", "HOLO 프롬프트", "개인 프로젝트 · 영상 보관함", "상업적 사용"] },
-  { id: "creator50", name: "CREATOR 50", kicker: "가장 인기", price: "79,000원", originalPrice: "99,000원", credits: "500초 / 월", videos: "10초 기준 최대 50편", featured: true, features: ["MiniMax H3", "이미지 · 텍스트 → 영상", "HOLO 프롬프트", "회원 전용 보관함", "상업적 사용", "우선 렌더링", "런칭 특별가"] },
-  { id: "pro", name: "PRO", kicker: "크리에이터 · 마케팅", price: "169,000원", credits: "900초 / 월", videos: "10초 기준 최대 90편", features: ["MiniMax H3", "고용량 영상 생성", "HOLO 프롬프트", "프로젝트 · 영상 보관함", "상업적 사용", "우선 렌더링", "2K 생성 지원"] },
+  { id: "free", name: "FREE", kicker: "HOLO 체험", price: "0원", credits: "체험 생성량", videos: "5초 영상 1회", features: ["5 HOLO 크레딧", "MiniMax H3 체험", "이미지 → 영상", "HOLO 프롬프트 분석", "개인 보관함"] },
+  { id: "starter", name: "STARTER", kicker: "개인 · 입문용", price: "29,000원", credits: "월 생성량 가이드", videos: "10초 기준 최대 15편", features: ["150 HOLO 크레딧 / 월", "MiniMax H3", "이미지 · 텍스트 → 영상", "HOLO 프롬프트", "개인 프로젝트 · 영상 보관함", "상업적 사용"] },
+  { id: "creator50", name: "CREATOR 50", kicker: "가장 인기", price: "79,000원", originalPrice: "99,000원", credits: "월 생성량 가이드", videos: "10초 기준 최대 50편", featured: true, features: ["500 HOLO 크레딧 / 월", "MiniMax H3", "이미지 · 텍스트 → 영상", "HOLO 프롬프트", "회원 전용 보관함", "상업적 사용", "우선 렌더링", "런칭 특별가"] },
+  { id: "pro", name: "PRO", kicker: "크리에이터 · 마케팅", price: "169,000원", credits: "월 생성량 가이드", videos: "10초 기준 최대 90편", features: ["900 HOLO 크레딧 / 월", "MiniMax H3", "고용량 영상 생성", "HOLO 프롬프트", "프로젝트 · 영상 보관함", "상업적 사용", "우선 렌더링", "2K 생성 지원"] },
 ];
 
 function goMain() {
@@ -222,7 +222,7 @@ function PricingPage() {
         {isAdmin ? (
           <div className="adminBanner"><strong>OWNER / ADMIN</strong><span>요금제 적용 제외 · MiniMax H3 Direct</span></div>
         ) : loggedIn ? (
-          <div className="walletBanner"><strong>현재 HOLO 크레딧</strong><span>{walletSeconds.toLocaleString()} sec</span></div>
+          <div className="walletBanner"><strong>현재 HOLO 크레딧</strong><span>{walletSeconds.toLocaleString()} 크레딧</span></div>
         ) : (
           <div className="walletBanner"><strong>회원 전용 요금제</strong><span>가입 후 이용 가능</span></div>
         )}
@@ -256,12 +256,12 @@ function PricingPage() {
 
       {notice && <div className="pricingNotice" role="status">{notice}</div>}
       <section className="creditGuide">
-        <div><span>768P</span><strong>1초 = 1 HOLO sec</strong></div>
-        <div><span>10초 영상</span><strong>10 sec 사용</strong></div>
-        <div><span>15초 영상</span><strong>15 sec 사용</strong></div>
-        <div><span>2K</span><strong>약 1.7× 사용</strong></div>
+        <div><span>768P</span><strong>1초 = 1 HOLO 크레딧</strong></div>
+        <div><span>10초 영상</span><strong>10 크레딧 사용</strong></div>
+        <div><span>15초 영상</span><strong>15 크레딧 사용</strong></div>
+        <div><span>2K</span><strong>약 1.7× 크레딧 사용</strong></div>
       </section>
-      <p className="pricingFineprint">영상 수량은 10초 · 768P 기준입니다. 실제 사용량은 영상 길이, 해상도, 생성 모델 및 재생성 여부에 따라 달라질 수 있습니다. 자동결제는 카드 등록 후 별도의 구독 승인 단계에서 활성화됩니다.</p>
+      <p className="pricingFineprint">HOLO 크레딧은 768P 기준 영상 1초당 1 크레딧으로 계산됩니다. 실제 사용량은 영상 길이, 해상도, 생성 모델 및 재생성 여부에 따라 달라질 수 있습니다. 자동결제는 카드 등록 후 별도의 구독 승인 단계에서 활성화됩니다.</p>
       <footer className="pricingFooter">HOLOGRAM PICTURES AI · AI ASSISTANT HOLO</footer>
     </main>
   );
