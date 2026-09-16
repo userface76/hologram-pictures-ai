@@ -53,6 +53,9 @@ function sendDetailPage(res, filePath) {
     if (!output.includes("/holo-detail-showcase.css")) {
       output = output.replace("</head>", '  <link rel="stylesheet" href="/holo-detail-showcase.css" />\n</head>');
     }
+    if (!output.includes("/readability.css")) {
+      output = output.replace("</head>", '  <link rel="stylesheet" href="/readability.css" />\n</head>');
+    }
     if (!output.includes("/holo-detail-showcase.js")) {
       output = output.replace("</body>", '  <script src="/holo-detail-showcase.js" defer></script>\n</body>');
     }
