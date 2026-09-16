@@ -35,6 +35,10 @@ export function isTossConfigured() {
   return Boolean((process.env.TOSS_SECRET_KEY || "").trim());
 }
 
+export function isTossBillingChargeEnabled() {
+  return (process.env.TOSS_BILLING_ENABLED || "false").trim().toLowerCase() === "true";
+}
+
 export async function confirmTossPayment(input: {
   paymentKey: string;
   orderId: string;
@@ -48,6 +52,25 @@ export async function confirmTossPayment(input: {
       paymentKey: input.paymentKey,
       orderId: input.orderId,
       amount: input.amount,
+    }),
+  });
+}
+
+/**
+ * Exchanges the one-time authKey returned by requestBillingAuth() for a billingKey.
+ * The billingKey is server-only and must never be returned to browser code.
+ */
+export async function issueTossBillingKey(input: {
+  authKey: string;
+  customerKey: string;
+  idempotencyKey?: string;
+}) {
+  return tossRequest("/v1/billing/authorizations/issue", {
+    method: "POST",
+    headers: input.idempotencyKey ? { "Idempotency-Key": input.idempotencyKey } : undefined,
+    body: JSON.stringify({
+      authKey: input.authKey,
+      customerKey: input.customerKey,
     }),
   });
 }
