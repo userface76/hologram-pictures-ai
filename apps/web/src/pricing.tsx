@@ -30,10 +30,83 @@ const TOSS_CLIENT_KEY = import.meta.env.VITE_TOSS_CLIENT_KEY || "";
 const TOSS_SDK_URL = "https://js.tosspayments.com/v2/standard";
 
 const plans: Plan[] = [
-  { id: "free", name: "FREE", kicker: "HOLO 체험", price: "0원", credits: "체험 생성량", videos: "5초 영상 1회", features: ["5 HOLO 크레딧", "MiniMax H3 체험", "이미지 → 영상", "HOLO 프롬프트 분석", "개인 보관함"] },
-  { id: "starter", name: "STARTER", kicker: "개인 · 입문용", price: "29,000원", credits: "월 생성량 가이드", videos: "10초 기준 최대 15편", features: ["150 HOLO 크레딧 / 월", "MiniMax H3", "이미지 · 텍스트 → 영상", "HOLO 프롬프트", "개인 프로젝트 · 영상 보관함", "상업적 사용"] },
-  { id: "creator50", name: "CREATOR 50", kicker: "가장 인기", price: "79,000원", originalPrice: "99,000원", credits: "월 생성량 가이드", videos: "10초 기준 최대 50편", featured: true, features: ["500 HOLO 크레딧 / 월", "MiniMax H3", "이미지 · 텍스트 → 영상", "HOLO 프롬프트", "회원 전용 보관함", "상업적 사용", "우선 렌더링", "런칭 특별가"] },
-  { id: "pro", name: "PRO", kicker: "크리에이터 · 마케팅", price: "169,000원", credits: "월 생성량 가이드", videos: "10초 기준 최대 90편", features: ["900 HOLO 크레딧 / 월", "MiniMax H3", "고용량 영상 생성", "HOLO 프롬프트", "프로젝트 · 영상 보관함", "상업적 사용", "우선 렌더링", "2K 생성 지원"] },
+  {
+    id: "free",
+    name: "FREE",
+    kicker: "HOLO 체험",
+    price: "0원",
+    credits: "5 HOLO 크레딧",
+    videos: "5초 영상 1회 체험",
+    features: [
+      "5 HOLO 크레딧",
+      "MiniMax H3 영상 생성 체험",
+      "이미지 → 영상",
+      "HOLO 프롬프트 분석",
+      "A · CONTROL / B · IMPACT / C · USER BASED 제안",
+      "개인 작업 보관함",
+    ],
+  },
+  {
+    id: "starter",
+    name: "STARTER",
+    kicker: "개인 · 입문용",
+    price: "29,000원",
+    credits: "150 HOLO 크레딧 / 월",
+    videos: "10초 기본 생성 기준 최대 15편",
+    features: [
+      "매월 150 HOLO 크레딧",
+      "이미지 · 텍스트 → 영상",
+      "HOLO AI 프롬프트 설계",
+      "3가지 제작안 A / B / C",
+      "시작 · 참조 · 엔딩 이미지 활용",
+      "MY STUDIO 프로젝트 저장",
+      "영상 재편집 · 스타일 변경",
+      "상업적 사용",
+    ],
+  },
+  {
+    id: "creator50",
+    name: "CREATOR 50",
+    kicker: "가장 인기",
+    price: "79,000원",
+    originalPrice: "99,000원",
+    credits: "500 HOLO 크레딧 / 월",
+    videos: "10초 기본 생성 기준 최대 50편",
+    featured: true,
+    features: [
+      "매월 500 HOLO 크레딧",
+      "MiniMax H3 영상 생성",
+      "이미지 · 텍스트 → 영상",
+      "HOLO AI Creative Director",
+      "A · CONTROL / B · IMPACT / C · USER BASED",
+      "광고 · 브랜드 · 숏폼 프롬프트 최적화",
+      "시작 · 참조 · 엔딩 이미지 활용",
+      "회원 전용 MY STUDIO",
+      "상업적 사용",
+      "우선 렌더링",
+    ],
+  },
+  {
+    id: "pro",
+    name: "PRO",
+    kicker: "크리에이터 · 마케팅",
+    price: "169,000원",
+    credits: "900 HOLO 크레딧 / 월",
+    videos: "10초 기본 생성 기준 최대 90편",
+    features: [
+      "매월 900 HOLO 크레딧",
+      "MiniMax H3 고용량 생성",
+      "HOLO AI Creative Director",
+      "광고 · 제품 · 브랜드 영상 제작 최적화",
+      "프로젝트 · 영상 라이브러리",
+      "시작 · 참조 · 엔딩 이미지 활용",
+      "버전 재편집 · 스타일 변경",
+      "상업적 사용",
+      "우선 렌더링",
+      "2K 생성 지원",
+      "대량 콘텐츠 제작에 적합",
+    ],
+  },
 ];
 
 function goMain() {
@@ -217,16 +290,17 @@ function PricingPage() {
 
       <section className="pricingHero">
         <span className="eyebrow">HOLO PLANS</span>
-        <h1>생각하는대로 영상이 된다.</h1>
-        <p>필요한 만큼 만들고, 사용한 생성 시간만큼 크레딧을 사용하세요.</p>
+        <h1>생각하는 대로 영상이 된다.</h1>
+        <p>아이디어만 떠올리세요. HOLO가 프롬프트를 설계하고 영상 제작까지 연결합니다.</p>
         {isAdmin ? (
           <div className="adminBanner"><strong>OWNER / ADMIN</strong><span>요금제 적용 제외 · MiniMax H3 Direct</span></div>
         ) : loggedIn ? (
-          <div className="walletBanner"><strong>현재 HOLO 크레딧</strong><span>{walletSeconds.toLocaleString()} 크레딧</span></div>
+          <div className="walletBanner"><strong>현재 보유 HOLO 크레딧</strong><span>{walletSeconds.toLocaleString()} 크레딧</span></div>
         ) : (
           <div className="walletBanner"><strong>회원 전용 요금제</strong><span>가입 후 이용 가능</span></div>
         )}
         {billingRegistered && <div className="walletBanner"><strong>자동결제 카드</strong><span>등록 완료</span></div>}
+        <p className="heroCreditNote">HOLO 크레딧은 영상 길이와 생성 옵션에 따라 사용됩니다.</p>
       </section>
 
       <section className="planGrid">
@@ -248,20 +322,37 @@ function PricingPage() {
                       ? "FREE 시작"
                       : billingRegistered
                         ? `${plan.name} 구독 준비`
-                        : `${plan.name} 카드 등록`}
+                        : `${plan.name} 시작하기`}
             </button>
           </article>
         ))}
       </section>
 
       {notice && <div className="pricingNotice" role="status">{notice}</div>}
-      <section className="creditGuide">
-        <div><span>768P</span><strong>1초 = 1 HOLO 크레딧</strong></div>
-        <div><span>10초 영상</span><strong>10 크레딧 사용</strong></div>
-        <div><span>15초 영상</span><strong>15 크레딧 사용</strong></div>
-        <div><span>2K</span><strong>약 1.7× 크레딧 사용</strong></div>
+
+      <section className="productionSuite">
+        <div className="suiteHeading">
+          <span>HOLO CREATIVE SYSTEM</span>
+          <h2>영상 몇 초가 아니라, 제작 시스템 전체를 제공합니다.</h2>
+          <p>아이디어부터 프롬프트 설계, 장면 연속성, 작품 보관까지 HOLO의 제작 흐름을 함께 이용하세요.</p>
+        </div>
+        <div className="suiteGrid">
+          <article><b>PROMPT INTELLIGENCE</b><strong>프롬프트 설계</strong><p>막연한 아이디어를 장면 · 분위기 · 카메라 · 움직임이 포함된 영상 언어로 구조화합니다.</p></article>
+          <article><b>3 DIRECTOR OPTIONS</b><strong>3가지 제작 방향</strong><p>CONTROL · IMPACT · USER BASED 중 목적에 맞는 제작안을 비교하고 선택할 수 있습니다.</p></article>
+          <article><b>VISUAL CONTINUITY</b><strong>장면 연속성</strong><p>인물 · 제품 · 무드와 시작 · 참조 · 엔딩 이미지의 역할을 연결해 일관된 제작을 돕습니다.</p></article>
+          <article><b>MY STUDIO</b><strong>나만의 영상 자산</strong><p>작품 저장 · 아이디어 복사 · 스타일 변경 · 버전 재편집으로 제작 결과를 계속 활용합니다.</p></article>
+        </div>
       </section>
-      <p className="pricingFineprint">HOLO 크레딧은 768P 기준 영상 1초당 1 크레딧으로 계산됩니다. 실제 사용량은 영상 길이, 해상도, 생성 모델 및 재생성 여부에 따라 달라질 수 있습니다. 자동결제는 카드 등록 후 별도의 구독 승인 단계에서 활성화됩니다.</p>
+
+      <section className="creditGuideWrap">
+        <div className="creditGuideTitle"><span>HOLO CREDIT GUIDE</span><h2>크레딧은 필요한 제작량에 맞춰 사용합니다.</h2></div>
+        <div className="creditGuide">
+          <div><span>10초 기본 영상</span><strong>약 10 HOLO 크레딧</strong></div>
+          <div><span>15초 기본 영상</span><strong>약 15 HOLO 크레딧</strong></div>
+          <div><span>고해상도 · 프리미엄 옵션</span><strong>선택 옵션에 따라 추가 크레딧</strong></div>
+        </div>
+      </section>
+      <p className="pricingFineprint">영상 생성에 필요한 크레딧은 영상 길이, 해상도, 생성 모델 및 선택한 제작 옵션에 따라 달라질 수 있습니다. 자동결제는 카드 등록 후 별도의 구독 승인 단계에서 활성화됩니다.</p>
       <footer className="pricingFooter">HOLOGRAM PICTURES AI · AI ASSISTANT HOLO</footer>
     </main>
   );
