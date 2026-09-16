@@ -10,27 +10,33 @@ function dbOrThrow() {
 
 export async function getBillingSummary(userId: string) {
   const db = dbOrThrow();
-  const [wallet, payments, refunds, subscription] = await Promise.all([
+  const [wallet, payments, refunds, subscription, billingCustomer] = await Promise.all([
     db.from("wallets").select("balance_seconds,updated_at").eq("user_id", userId).maybeSingle(),
     db.from("payments").select("id,order_id,plan_id,order_name,amount_krw,credit_seconds,currency,status,method,approved_at,created_at,updated_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
     db.from("refund_requests").select("id,order_id,reason,requested_amount_krw,status,created_at,updated_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
     db.from("subscriptions").select("id,plan_id,status,current_period_start,current_period_end,next_charge_at,created_at,updated_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    db.from("billing_customers").select("billing_enabled,billing_method,updated_at").eq("user_id", userId).maybeSingle(),
   ]);
   if (wallet.error) throw wallet.error;
   if (payments.error) throw payments.error;
   if (refunds.error) throw refunds.error;
   if (subscription.error) throw subscription.error;
+  if (billingCustomer.error) throw billingCustomer.error;
   return {
     wallet: wallet.data ?? { balance_seconds: 0 },
     payments: payments.data ?? [],
     refundRequests: refunds.data ?? [],
     subscription: subscription.data ?? null,
+    billingMethod: billingCustomer.data ?? { billing_enabled: false, billing_method: null },
   };
 }
 
 export async function ensureBillingCustomer(userId: string) {
   const db = dbOrThrow();
-  const existing = await db.from("billing_customers").select("user_id,toss_customer_key").eq("user_id", userId).maybeSingle();
+  const existing = await db.from("billing_customers")
+    .select("user_id,toss_customer_key,billing_enabled,billing_method,updated_at")
+    .eq("user_id", userId)
+    .maybeSingle();
   if (existing.error) throw existing.error;
   if (existing.data?.toss_customer_key) return existing.data;
 
@@ -39,9 +45,30 @@ export async function ensureBillingCustomer(userId: string) {
   const created = await db.from("billing_customers").insert({
     user_id: userId,
     toss_customer_key: tossCustomerKey,
-  }).select("user_id,toss_customer_key").single();
+  }).select("user_id,toss_customer_key,billing_enabled,billing_method,updated_at").single();
   if (created.error) throw created.error;
   return created.data;
+}
+
+export async function saveBillingKey(userId: string, customerKey: string, billing: any) {
+  const db = dbOrThrow();
+  const billingKey = String(billing?.billingKey || "").trim();
+  if (!billingKey) throw new Error("Toss billingKey was not returned");
+
+  // billingKey is intentionally stored only in the server-only billing_customers table.
+  // Do not select it back into browser-facing responses.
+  const result = await db.from("billing_customers").update({
+    billing_key: billingKey,
+    billing_method: String(billing?.method || "CARD"),
+    billing_enabled: true,
+    updated_at: new Date().toISOString(),
+  })
+    .eq("user_id", userId)
+    .eq("toss_customer_key", customerKey)
+    .select("user_id,toss_customer_key,billing_enabled,billing_method,updated_at")
+    .single();
+  if (result.error) throw result.error;
+  return result.data;
 }
 
 export async function createPendingPayment(userId: string, plan: HoloPlan) {
