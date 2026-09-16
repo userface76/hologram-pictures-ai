@@ -10,8 +10,14 @@ import {
   grantPaymentCredits,
   markPaymentFailed,
   markPaymentFromToss,
+  saveBillingKey,
 } from "../services/billingDatabase.js";
-import { confirmTossPayment, isTossConfigured } from "../services/tossPayments.js";
+import {
+  confirmTossPayment,
+  isTossBillingChargeEnabled,
+  isTossConfigured,
+  issueTossBillingKey,
+} from "../services/tossPayments.js";
 
 export const paymentsRouter = Router();
 
@@ -22,12 +28,65 @@ function userIdOf(req: any) {
 }
 
 paymentsRouter.get("/billing/plans", (_req, res) => {
-  res.json({ plans: publicHoloPlans(), tossConfigured: isTossConfigured() });
+  res.json({
+    plans: publicHoloPlans(),
+    tossConfigured: isTossConfigured(),
+    recurringChargeEnabled: isTossBillingChargeEnabled(),
+  });
 });
 
 paymentsRouter.get("/billing/summary", async (req, res, next) => {
   try { res.json({ billing: await getBillingSummary(userIdOf(req)) }); }
   catch (error) { next(error); }
+});
+
+paymentsRouter.get("/billing/customer", async (req, res, next) => {
+  try {
+    if (!isTossConfigured()) return res.status(503).json({ error: "toss_not_configured" });
+    const customer = await ensureBillingCustomer(userIdOf(req));
+    res.json({
+      billing: {
+        customerKey: customer.toss_customer_key,
+        registered: Boolean(customer.billing_enabled),
+        method: customer.billing_method ?? null,
+        recurringChargeEnabled: isTossBillingChargeEnabled(),
+      },
+    });
+  } catch (error) { next(error); }
+});
+
+const billingIssueSchema = z.object({
+  authKey: z.string().min(1).max(300),
+  customerKey: z.string().min(2).max(300),
+});
+
+paymentsRouter.post("/billing/issue", async (req, res, next) => {
+  try {
+    if (!isTossConfigured()) return res.status(503).json({ error: "toss_not_configured" });
+    const userId = userIdOf(req);
+    const input = billingIssueSchema.parse(req.body);
+    const customer = await ensureBillingCustomer(userId);
+
+    // Never trust the browser-provided customerKey. It must match the server-owned value.
+    if (String(customer.toss_customer_key) !== input.customerKey) {
+      return res.status(409).json({ error: "billing_customer_mismatch" });
+    }
+
+    const issued = await issueTossBillingKey({
+      authKey: input.authKey,
+      customerKey: input.customerKey,
+    });
+    const saved = await saveBillingKey(userId, input.customerKey, issued);
+
+    // Do not return billingKey to the browser.
+    res.json({
+      billing: {
+        registered: true,
+        method: saved.billing_method ?? issued?.method ?? "CARD",
+        recurringChargeEnabled: isTossBillingChargeEnabled(),
+      },
+    });
+  } catch (error) { next(error); }
 });
 
 const prepareSchema = z.object({ planId: z.string().min(1).max(40) });
