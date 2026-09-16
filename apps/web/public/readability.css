@@ -1,0 +1,61 @@
+/* HOLO readability pass: raise small UI copy by roughly one visual point without changing headline hierarchy. */
+.brand span,.landingBrand span,.studioBrand span{font-size:10px!important}
+.topbar small{font-size:9px!important}
+.landingNav button{font-size:12px!important}
+.landingNav .memberName{font-size:11px!important}
+.landingEyebrow{font-size:11px!important}
+.landingMeta{font-size:11px!important}
+.networkNode:after{font-size:9px!important}
+.worldCore span{font-size:9px!important}
+.landingStrip b{font-size:13px!important}
+.landingStrip p{font-size:12px!important}
+.landingFooter{font-size:9px!important}
+.globePoint{font-size:8px!important}
+.globePoint.labeled{font-size:9px!important}
+.dataNode{font-size:10px!important}
+.coreInner strong{font-size:12px!important}
+.coreInner em{font-size:10px!important}
+.coreInner small{font-size:8px!important}
+.worldCaption strong,.worldCaption span{font-size:11px!important}
+.status{font-size:12px!important}
+.uploadZone strong{font-size:12px!important}
+.uploadZone small{font-size:9px!important}
+.previewInfo strong{font-size:10px!important}
+.previewInfo select,.previewActions button{font-size:9px!important}
+.quickHints{font-size:9px!important}
+.plan label,.renderCard label{font-size:8px!important}
+.plan strong{font-size:12px!important}
+.plan p{font-size:12px!important}
+.renderMeta{font-size:9px!important}
+.renderMeta button,.renderMeta a{font-size:9px!important}
+.studioHeader nav button{font-size:11px!important}
+.studioHero small{font-size:10px!important}
+.studioSummary span{font-size:11px!important}
+.activityHead b{font-size:12px!important}
+.activityHead span{font-size:10px!important}
+.activityItem span{font-size:11px!important}
+.activityItem small{font-size:9px!important}
+.studioTabs button{font-size:12px!important}
+.categoryBar button{font-size:10px!important}
+.cardTopline,.cardTopline b{font-size:10px!important}
+.categoryBadge{font-size:9px!important}
+.ideaText{font-size:12px!important}
+.promptBox small{font-size:9px!important}
+.promptBox p{font-size:11px!important}
+.projectActions button,.videoActions button,.assetDelete{font-size:10px!important}
+.videoBody>span{font-size:9px!important}
+.videoBody>strong{font-size:11px!important}
+.videoBody p{font-size:10px!important}
+.videoActions a{font-size:10px!important}
+.assetCard b{font-size:11px!important}
+.assetCard span{font-size:10px!important}
+.assetCard small{font-size:9px!important}
+.studioFooter{font-size:9px!important}
+.detail-shell small,.chapter-kicker,.detail-showcase-eyebrow{font-size:calc(1em + 1px)}
+
+@media(max-width:640px){
+  .landingNav button{font-size:10px!important}
+  .quickHints{font-size:9px!important;line-height:1.55}
+  .studioHeader nav button{font-size:11px!important}
+  .categoryBar button{font-size:10px!important}
+}
