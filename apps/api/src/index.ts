@@ -5,6 +5,7 @@ import { apiRouter } from "./routes/api.js";
 import { directorRouter } from "./routes/director.js";
 import { paymentsRouter } from "./routes/payments.js";
 import { publicShowcaseRouter, showcaseAdminRouter } from "./routes/showcase.js";
+import { studioManageRouter } from "./routes/studioManage.js";
 import { tossWebhookRouter } from "./routes/tossWebhook.js";
 import { requireAuth } from "./middleware/requireAuth.js";
 
@@ -20,8 +21,8 @@ app.use(publicShowcaseRouter);
 // Toss webhook must be reachable without a member session. Payment state is re-verified server-to-server.
 app.use("/webhooks", tossWebhookRouter);
 
-// Member billing/payment and showcase administration remain protected by Supabase auth.
-app.use("/api", requireAuth, directorRouter, paymentsRouter, showcaseAdminRouter, apiRouter);
+// Member billing/payment, studio management and showcase administration remain protected by Supabase auth.
+app.use("/api", requireAuth, directorRouter, paymentsRouter, showcaseAdminRouter, studioManageRouter, apiRouter);
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);
   const status = Number(err?.statusCode || err?.status || 400);
