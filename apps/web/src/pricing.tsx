@@ -217,7 +217,7 @@ function PricingPage() {
 
       <section className="pricingHero">
         <span className="eyebrow">HOLO PLANS</span>
-        <h1>말하면, 영상이 된다.</h1>
+        <h1>생각하는대로 영상이 된다.</h1>
         <p>필요한 만큼 만들고, 사용한 생성 시간만큼 크레딧을 사용하세요.</p>
         {isAdmin ? (
           <div className="adminBanner"><strong>OWNER / ADMIN</strong><span>요금제 적용 제외 · MiniMax H3 Direct</span></div>
