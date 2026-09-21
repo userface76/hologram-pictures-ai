@@ -223,7 +223,7 @@ apiRouter.get("/jobs/:id", async (req, res, next) => {
           job = { ...job, userId, storageUrl: stored, outputUrl: archived.url || job.sourceUrl };
         }
       } catch (error) {
-        console.warn("R2 archive failed; keeping MiniMax source URL:", error);
+        console.warn("R2 archive failed; keeping provider source URL:", error);
       }
     }
 
