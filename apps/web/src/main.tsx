@@ -139,7 +139,7 @@ function App() {
         d.job.status === "completed"
           ? "HOLO 영상 생성 완료"
           : d.job.status === "failed"
-            ? `영상 생성 실패 · ${d.job.error || "MiniMax가 작업을 완료하지 못했습니다"}`
+            ? `영상 생성 실패 · ${d.job.error || "영상 생성 엔진이 작업을 완료하지 못했습니다"}`
             : `HOLO 렌더링 · ${d.job.status} · ${d.job.progress}%`,
       );
     } catch (e: any) {
@@ -446,8 +446,8 @@ function App() {
           <div className="loadingCard">
             <div className="holoLoader"><span /><span /><span /></div>
             <strong>HOLO가 생각을 영상 언어로 정리하고 있습니다</strong>
-            <p>{imageCount ? "이미지 역할과 아이디어를 분석해 MiniMax H3 렌더 파이프라인에 연결하는 중…" : "아이디어를 영상 생성 프롬프트로 설계하고 렌더 작업을 준비하는 중…"}</p>
-            <div className="loadingSteps"><i className="on">IDEA</i><i className="on">HOLO CORE</i><i>PROMPT</i><i>MINIMAX H3</i></div>
+            <p>{imageCount ? "이미지 역할과 아이디어를 분석해 최적의 영상 엔진 렌더 파이프라인에 연결하는 중…" : "아이디어를 영상 생성 프롬프트로 설계하고 렌더 작업을 준비하는 중…"}</p>
+            <div className="loadingSteps"><i className="on">IDEA</i><i className="on">HOLO CORE</i><i>PROMPT</i><i>VIDEO ENGINE</i></div>
           </div>
         </div>
       )}
