@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { interpretWithAstra } from "../core/astra.js";
 import type { VideoMediaInputs } from "../core/types.js";
-import { getVideoProvider, listVideoProviders } from "../services/modelRouter.js";
+import { activeVideoEngine, getVideoProvider, listVideoProviders } from "../services/modelRouter.js";
 import { jobStore } from "../services/jobStore.js";
 import {
   createProject,
@@ -102,13 +102,14 @@ function publicCreditState(credit: any) {
 
 async function createRenderedJob(userId: string, plan: any) {
   await ensureUserAccount(userId);
-  const credit = await reserveRenderCredits(userId, plan);
-  const project = await createAndPersistProject(userId, plan);
   const provider = getVideoProvider(plan.model);
+  const routedPlan = { ...plan, model: provider.id };
+  const credit = await reserveRenderCredits(userId, routedPlan);
+  const project = await createAndPersistProject(userId, routedPlan);
   let job: any;
 
   try {
-    job = await provider.create(plan);
+    job = await provider.create(routedPlan);
   } catch (error) {
     try { await releaseRenderCreditReservation(userId, credit.reservationId); }
     catch (releaseError) { console.error("HOLO credit reservation release failed after provider create error:", releaseError); }
@@ -138,6 +139,8 @@ apiRouter.get("/system/status", (req, res) => res.json({
   userId: userIdOf(req),
   openai: Boolean(process.env.OPENAI_API_KEY),
   minimax: Boolean(process.env.MINIMAX_API_KEY),
+  higgsfield: Boolean(process.env.HIGGSFIELD_API_KEY || process.env.HF_CREDENTIALS || process.env.HF_KEY),
+  activeVideoEngine: activeVideoEngine(),
   demoVideoMode: (process.env.DEMO_VIDEO_MODE || "true").toLowerCase() === "true",
   creditEnforced: isRenderCreditEnforced(),
   supabase: isSupabaseConfigured(),
