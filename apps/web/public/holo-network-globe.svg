@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 900" role="img" aria-label="HOLO AI global network earth">
+  <defs>
+    <radialGradient id="ocean" cx="50%" cy="43%" r="58%">
+      <stop offset="0" stop-color="#0c3140" stop-opacity=".72"/>
+      <stop offset=".52" stop-color="#061923" stop-opacity=".82"/>
+      <stop offset="1" stop-color="#01070d" stop-opacity=".96"/>
+    </radialGradient>
+    <linearGradient id="line" x1="0" x2="1">
+      <stop stop-color="#31e9ff" stop-opacity=".16"/>
+      <stop offset=".5" stop-color="#65f3ff" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#31e9ff" stop-opacity=".16"/>
+    </linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <clipPath id="globe"><ellipse cx="700" cy="450" rx="560" ry="350"/></clipPath>
+  </defs>
+  <g opacity=".55">
+    <path d="M80 430C260 180 510 90 820 110c265 18 420 130 500 305" fill="none" stroke="#2ddfff" stroke-opacity=".16"/>
+    <path d="M35 500C270 285 430 205 715 185c290-20 510 72 650 240" fill="none" stroke="#63f0ff" stroke-opacity=".12"/>
+    <path d="M120 620C340 410 520 330 770 320c255-12 430 58 565 180" fill="none" stroke="#38d9ff" stroke-opacity=".1"/>
+  </g>
+  <ellipse cx="700" cy="450" rx="560" ry="350" fill="url(#ocean)" stroke="#5aeaff" stroke-opacity=".32" stroke-width="2" filter="url(#glow)"/>
+  <g clip-path="url(#globe)" fill="none">
+    <g stroke="#39dff5" stroke-opacity=".18">
+      <ellipse cx="700" cy="450" rx="560" ry="76"/><ellipse cx="700" cy="450" rx="560" ry="142"/><ellipse cx="700" cy="450" rx="560" ry="214"/><ellipse cx="700" cy="450" rx="560" ry="286"/>
+      <ellipse cx="700" cy="450" rx="110" ry="350"/><ellipse cx="700" cy="450" rx="220" ry="350"/><ellipse cx="700" cy="450" rx="330" ry="350"/><ellipse cx="700" cy="450" rx="445" ry="350"/>
+    </g>
+    <g id="continents" stroke="#76f4ff" stroke-opacity=".78" fill="#53deef" fill-opacity=".035">
+      <path d="M240 330l55-55 82-24 86 14 74 55-22 36-71 9-48 34-60 4-47-22-49-51zM336 419l49 5 35 37 9 50 33 34-19 59-27 78-43 73-29-16-13-55-25-49-9-76 18-63-5-46 26-31z"/>
+      <path d="M587 297l54-32 59 2 38 30 25 43-17 33-64 4-27 31-61-7-23-38 16-66zM650 413l63-22 60 15 51 51 4 62-33 60-35 71-69-12-27-56-29-67-5-67 20-35z"/>
+      <path d="M769 282l58-28 62 7 36 31 52 15 79-4 58 33 15 39-37 20-64-4-54 25-53-10-41-34-55-10-41-39-15-41zM1000 583l55 11 39 43-14 46-56 12-42-33 18-79z"/>
+      <path d="M948 413l47 9 31 28 46 12 37 34-12 42-53 7-34-23-31 5-37-26-7-50 13-38z"/>
+    </g>
+    <g stroke="url(#line)" stroke-width="1.2" stroke-opacity=".75">
+      <path d="M235 339L327 285 420 318 360 420 452 501 391 620"/>
+      <path d="M599 307L678 346 732 303 835 331 905 291 986 341 1060 376 995 431 921 495 1018 516 1090 601"/>
+      <path d="M663 428L742 468 805 430 866 514 773 573 691 545 659 428"/>
+      <path d="M973 422L1043 463 1112 501 1050 548 983 519 948 413"/>
+      <path d="M327 285L599 307M420 318L678 346M452 501L742 468M391 620L691 545M732 303L905 291M805 430L995 431M866 514L1018 516"/>
+    </g>
+    <g fill="#86f8ff" filter="url(#glow)">
+      <circle cx="327" cy="285" r="5"/><circle cx="420" cy="318" r="4"/><circle cx="360" cy="420" r="5"/><circle cx="452" cy="501" r="4"/><circle cx="391" cy="620" r="4"/>
+      <circle cx="599" cy="307" r="4"/><circle cx="678" cy="346" r="5"/><circle cx="732" cy="303" r="4"/><circle cx="835" cy="331" r="5"/><circle cx="905" cy="291" r="4"/><circle cx="986" cy="341" r="5"/>
+      <circle cx="742" cy="468" r="5"/><circle cx="805" cy="430" r="4"/><circle cx="866" cy="514" r="5"/><circle cx="773" cy="573" r="4"/><circle cx="995" cy="431" r="5"/><circle cx="1043" cy="463" r="4"/><circle cx="1112" cy="501" r="5"/><circle cx="1050" cy="548" r="4"/>
+    </g>
+    <g stroke="#79efff" stroke-opacity=".42" stroke-width="1.2" stroke-dasharray="4 8">
+      <path d="M290 365Q550 140 864 311"/><path d="M370 560Q690 245 1070 390"/><path d="M460 290Q760 105 1080 360"/><path d="M340 450Q680 710 1100 520"/>
+    </g>
+  </g>
+  <g fill="none" stroke="#59e7ff" stroke-opacity=".28">
+    <ellipse cx="700" cy="450" rx="650" ry="270" transform="rotate(-11 700 450)"/>
+    <ellipse cx="700" cy="450" rx="640" ry="185" transform="rotate(15 700 450)"/>
+    <ellipse cx="700" cy="450" rx="585" ry="405" transform="rotate(4 700 450)"/>
+  </g>
+  <g fill="#7ef4ff" filter="url(#glow)">
+    <circle cx="96" cy="470" r="4"/><circle cx="1284" cy="366" r="5"/><circle cx="1180" cy="650" r="4"/><circle cx="222" cy="606" r="4"/><circle cx="1130" cy="216" r="4"/>
+  </g>
+</svg>
