@@ -13,3 +13,13 @@
 .monthlyPromo{margin:-5px 0 14px;color:#ff84b4;font-size:9px;font-weight:700;line-height:1.45}
 .planCard.featured .discountBadge{color:#83f1ff;border-color:rgba(83,241,255,.26);background:rgba(43,195,220,.08)}
 @media(max-width:700px){.billingToggle{width:100%;max-width:360px}.billingToggle button{flex:1;padding:0 10px}.annualGuide{max-width:340px;margin-left:auto!important;margin-right:auto!important}.annualTotal{margin-top:0}}
+
+
+.annualCreditHeadline{display:flex;flex-direction:column;gap:5px}
+.annualCreditHeadline span{font-size:9px!important;letter-spacing:.08em;color:#7ea4ae!important}
+.annualCreditHeadline b{font-size:20px!important;color:#83f1ff!important;letter-spacing:-.02em}
+.annualCreditMath{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:7px}
+.annualCreditMath span{padding:5px 7px;border-radius:999px;background:rgba(92,229,255,.07);border:1px solid rgba(92,229,255,.13);font-size:9px!important;color:#a8c8d0!important}
+.annualCreditMath .bonus{background:rgba(125,243,191,.09);border-color:rgba(125,243,191,.23);color:#7df3bf!important;font-weight:800}
+.annualCreditMath i{font-style:normal;color:#5ee8f8;font-weight:800}
+.monthlyCreditNote{margin-top:7px;color:#6f9099;font-size:8.5px;line-height:1.5}
