@@ -22,6 +22,9 @@ type Plan = {
   annualTotal: string;
   annualDiscount?: string;
   credits: string;
+  annualBaseCredits?: string;
+  annualBonusCredits?: string;
+  annualCredits?: string;
   videos: string;
   monthlyOriginalPrice?: string;
   featured?: boolean;
@@ -62,6 +65,9 @@ const plans: Plan[] = [
     annualTotal: "276,000원",
     annualDiscount: "21%",
     credits: "150 HOLO 크레딧 / 월",
+    annualBaseCredits: "1,800",
+    annualBonusCredits: "200",
+    annualCredits: "2,000",
     videos: "기본 엔진 10초 영상 기준 약 15편 상당",
     features: [
       "매월 150 HOLO 크레딧",
@@ -84,6 +90,9 @@ const plans: Plan[] = [
     annualDiscount: "25%",
     monthlyOriginalPrice: "99,000원",
     credits: "500 HOLO 크레딧 / 월",
+    annualBaseCredits: "6,000",
+    annualBonusCredits: "1,000",
+    annualCredits: "7,000",
     videos: "기본 엔진 10초 영상 기준 약 50편 상당",
     featured: true,
     features: [
@@ -108,6 +117,9 @@ const plans: Plan[] = [
     annualTotal: "1,428,000원",
     annualDiscount: "30%",
     credits: "900 HOLO 크레딧 / 월",
+    annualBaseCredits: "10,800",
+    annualBonusCredits: "2,200",
+    annualCredits: "13,000",
     videos: "기본 엔진 10초 영상 기준 약 90편 상당",
     features: [
       "매월 900 HOLO 크레딧",
@@ -342,7 +354,27 @@ function PricingPage() {
             </div>
             {billingPeriod === "annual" && plan.id !== "free" && <div className="annualTotal"><span>연간 총 결제</span><b>{plan.annualTotal}</b></div>}
             {billingPeriod === "monthly" && plan.id === "creator50" && <div className="monthlyPromo">런칭가 · 정가 99,000원에서 약 20% 할인</div>}
-            <div className="planCredit"><b>{plan.credits}</b><span>{plan.videos}</span></div>
+            <div className="planCredit">
+              {billingPeriod === "annual" && plan.annualCredits ? (
+                <>
+                  <div className="annualCreditHeadline">
+                    <span>연간 총 제공</span>
+                    <b>{plan.annualCredits} HOLO 크레딧</b>
+                  </div>
+                  <div className="annualCreditMath">
+                    <span>기본 {plan.annualBaseCredits}</span>
+                    <i>+</i>
+                    <span className="bonus">연간 보너스 {plan.annualBonusCredits}</span>
+                  </div>
+                  <small className="monthlyCreditNote">기본 월 {plan.credits.replace(" / 월","")} × 12개월 기준</small>
+                </>
+              ) : (
+                <>
+                  <b>{plan.credits}</b>
+                  <span>{plan.videos}</span>
+                </>
+              )}
+            </div>
             <ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>
             <button disabled={busyPlan === plan.id} onClick={() => choosePlan(plan)}>
               {busyPlan === plan.id
@@ -385,7 +417,7 @@ function PricingPage() {
           <div><span>고해상도 · 프리미엄 옵션</span><strong>선택 옵션에 따라 추가 크레딧</strong></div>
         </div>
       </section>
-      <p className="pricingFineprint">영상 생성에 필요한 크레딧은 영상 길이, 해상도, 생성 엔진 및 선택한 제작 옵션에 따라 달라질 수 있습니다. 연간 요금은 표시된 월 환산가를 기준으로 1년 총액을 결제하며, 크레딧은 운영 정책에 따라 매월 지급됩니다. 자동결제는 카드 등록 후 별도의 구독 승인 단계에서 활성화됩니다.</p>
+      <p className="pricingFineprint">영상 생성에 필요한 크레딧은 영상 길이, 해상도, 생성 엔진 및 선택한 제작 옵션에 따라 달라질 수 있습니다. 연간 요금은 표시된 월 환산가를 기준으로 1년 총액을 결제하며, 연간 플랜에는 12개월 기본 크레딧에 별도의 연간 보너스 크레딧이 추가됩니다. 실제 크레딧 지급 시점과 방식은 운영 정책에 따라 월별 또는 분기별로 나누어 적용될 수 있습니다. 자동결제는 카드 등록 후 별도의 구독 승인 단계에서 활성화됩니다.</p>
       <footer className="pricingFooter">HOLOGRAM PICTURES AI · AI ASSISTANT HOLO</footer>
     </main>
   );
