@@ -69,29 +69,31 @@ function renderLanding(session?: Session | null) {
             <button id="hero-pricing" type="button">요금제 보기</button>
           </div>
           <div class="landingMeta">
-            <div><strong>MiniMax H3</strong>VIDEO ENGINE</div>
+            <div><strong>MULTI ENGINE</strong>VIDEO GENERATION</div>
             <div><strong>HOLO</strong>PROMPT INTELLIGENCE</div>
             <div><strong>R2 + Supabase</strong>SECURE WORKSPACE</div>
           </div>
         </div>
 
         <div class="worldStage" aria-hidden="true">
-          <div class="worldPlane"></div>
-          <div class="mobileGlobe"></div>
-          <div class="networkLine line1"></div><div class="networkLine line2"></div><div class="networkLine line3"></div><div class="networkLine line4"></div>
+          <div class="earthHalo earthHaloA"></div>
+          <div class="earthHalo earthHaloB"></div>
+          <div class="networkEarth"><img src="/holo-network-globe.svg" alt="" /></div>
+          <div class="earthOrbit orbitA"></div>
+          <div class="earthOrbit orbitB"></div>
           <i class="networkNode node1" data-label="THINK"></i>
           <i class="networkNode node2" data-label="REFINE"></i>
           <i class="networkNode node3" data-label="PROMPT"></i>
           <i class="networkNode node4" data-label="CREATE"></i>
           <i class="networkNode node5" data-label="HOLO CORE"></i>
-          <div class="worldCore"><strong>HOLO</strong><span>HOLOGRAM CORE</span></div>
+          <div class="worldCore"><strong>HOLO</strong><span>GLOBAL INTELLIGENCE CORE</span></div>
         </div>
       </section>
 
       <section class="landingStrip">
         <article><b>THINK · 아이디어만 이야기하세요</b><p>완성된 프롬프트가 없어도 됩니다. 떠오른 장면, 제품, 분위기나 이야기를 자유롭게 말하거나 입력하세요.</p></article>
         <article><b>REFINE · HOLO가 생각을 구체화합니다</b><p>장면 · 분위기 · 카메라 · 움직임 · 시작/참조/엔딩 이미지를 이해하고 영상 생성에 필요한 구조로 정리합니다.</p></article>
-        <article><b>CREATE · 영상 언어로 연결합니다</b><p>완성된 프롬프트를 MiniMax H3 렌더 파이프라인에 연결하고 프로젝트와 결과 영상을 회원별로 관리합니다.</p></article>
+        <article><b>CREATE · 영상 언어로 연결합니다</b><p>완성된 프롬프트를 가장 적합한 영상 생성 엔진에 연결하고 프로젝트와 결과 영상을 회원별로 관리합니다.</p></article>
       </section>
       <footer class="landingFooter">HOLOGRAM PICTURES AI · 생각은 자유롭게. 프롬프트는 HOLO가. · FROM IDEA TO VIDEO INTELLIGENCE</footer>
     </main>`;
