@@ -17,13 +17,18 @@ type Plan = {
   id: string;
   name: string;
   kicker: string;
-  price: string;
+  monthlyPrice: string;
+  annualMonthlyPrice: string;
+  annualTotal: string;
+  annualDiscount?: string;
   credits: string;
   videos: string;
-  originalPrice?: string;
+  monthlyOriginalPrice?: string;
   featured?: boolean;
   features: string[];
 };
+
+type BillingPeriod = "monthly" | "annual";
 
 const API = import.meta.env.VITE_API_URL || (window.location.hostname === "localhost" ? "http://localhost:8080" : "https://hologramapi-production.up.railway.app");
 const TOSS_CLIENT_KEY = import.meta.env.VITE_TOSS_CLIENT_KEY || "";
@@ -34,12 +39,14 @@ const plans: Plan[] = [
     id: "free",
     name: "FREE",
     kicker: "HOLO 체험",
-    price: "0원",
+    monthlyPrice: "0원",
+    annualMonthlyPrice: "0원",
+    annualTotal: "0원",
     credits: "5 HOLO 크레딧",
     videos: "5초 영상 1회 체험",
     features: [
       "5 HOLO 크레딧",
-      "MiniMax H3 영상 생성 체험",
+      "HOLO 영상 생성 엔진 체험",
       "이미지 → 영상",
       "HOLO 프롬프트 분석",
       "A · CONTROL / B · IMPACT / C · USER BASED 제안",
@@ -50,9 +57,12 @@ const plans: Plan[] = [
     id: "starter",
     name: "STARTER",
     kicker: "개인 · 입문용",
-    price: "29,000원",
+    monthlyPrice: "29,000원",
+    annualMonthlyPrice: "23,000원",
+    annualTotal: "276,000원",
+    annualDiscount: "21%",
     credits: "150 HOLO 크레딧 / 월",
-    videos: "10초 기본 생성 기준 최대 15편",
+    videos: "기본 엔진 10초 영상 기준 약 15편 상당",
     features: [
       "매월 150 HOLO 크레딧",
       "이미지 · 텍스트 → 영상",
@@ -68,14 +78,17 @@ const plans: Plan[] = [
     id: "creator50",
     name: "CREATOR 50",
     kicker: "가장 인기",
-    price: "79,000원",
-    originalPrice: "99,000원",
+    monthlyPrice: "79,000원",
+    annualMonthlyPrice: "59,000원",
+    annualTotal: "708,000원",
+    annualDiscount: "25%",
+    monthlyOriginalPrice: "99,000원",
     credits: "500 HOLO 크레딧 / 월",
-    videos: "10초 기본 생성 기준 최대 50편",
+    videos: "기본 엔진 10초 영상 기준 약 50편 상당",
     featured: true,
     features: [
       "매월 500 HOLO 크레딧",
-      "MiniMax H3 영상 생성",
+      "HOLO 멀티엔진 영상 생성",
       "이미지 · 텍스트 → 영상",
       "HOLO AI Creative Director",
       "A · CONTROL / B · IMPACT / C · USER BASED",
@@ -90,12 +103,15 @@ const plans: Plan[] = [
     id: "pro",
     name: "PRO",
     kicker: "크리에이터 · 마케팅",
-    price: "169,000원",
+    monthlyPrice: "169,000원",
+    annualMonthlyPrice: "119,000원",
+    annualTotal: "1,428,000원",
+    annualDiscount: "30%",
     credits: "900 HOLO 크레딧 / 월",
-    videos: "10초 기본 생성 기준 최대 90편",
+    videos: "기본 엔진 10초 영상 기준 약 90편 상당",
     features: [
       "매월 900 HOLO 크레딧",
-      "MiniMax H3 고용량 생성",
+      "HOLO 멀티엔진 고용량 생성",
       "HOLO AI Creative Director",
       "광고 · 제품 · 브랜드 영상 제작 최적화",
       "프로젝트 · 영상 라이브러리",
@@ -142,6 +158,7 @@ function PricingPage() {
   const [notice, setNotice] = useState("");
   const [busyPlan, setBusyPlan] = useState<string | null>(null);
   const [billingRegistered, setBillingRegistered] = useState(false);
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("annual");
 
   useEffect(() => {
     let active = true;
@@ -258,11 +275,12 @@ function PricingPage() {
       if (!window.TossPayments) throw new Error("TossPayments SDK is unavailable");
 
       localStorage.setItem("holo_pending_plan_id", plan.id);
+      localStorage.setItem("holo_pending_billing_period", billingPeriod);
       const tossPayments = window.TossPayments(TOSS_CLIENT_KEY);
       const payment = tossPayments.payment({ customerKey });
       const base = `${window.location.origin}${window.location.pathname}`;
-      const successUrl = `${base}?billing=success&planId=${encodeURIComponent(plan.id)}#pricing`;
-      const failUrl = `${base}?billing=fail&planId=${encodeURIComponent(plan.id)}#pricing`;
+      const successUrl = `${base}?billing=success&planId=${encodeURIComponent(plan.id)}&billingPeriod=${billingPeriod}#pricing`;
+      const failUrl = `${base}?billing=fail&planId=${encodeURIComponent(plan.id)}&billingPeriod=${billingPeriod}#pricing`;
 
       await payment.requestBillingAuth({
         method: "CARD",
@@ -300,15 +318,30 @@ function PricingPage() {
           <div className="walletBanner"><strong>회원 전용 요금제</strong><span>가입 후 이용 가능</span></div>
         )}
         {billingRegistered && <div className="walletBanner"><strong>자동결제 카드</strong><span>등록 완료</span></div>}
-        <p className="heroCreditNote">HOLO 크레딧은 영상 길이와 생성 옵션에 따라 사용됩니다.</p>
+        <p className="heroCreditNote">HOLO 크레딧은 영상 길이, 해상도, 생성 엔진과 선택 옵션에 따라 사용됩니다.</p>
+        <div className="billingToggle" role="group" aria-label="결제 주기 선택">
+          <button className={billingPeriod === "monthly" ? "active" : ""} onClick={() => setBillingPeriod("monthly")} type="button">월간</button>
+          <button className={billingPeriod === "annual" ? "active" : ""} onClick={() => setBillingPeriod("annual")} type="button">연간 <span>최대 30% 할인</span></button>
+        </div>
+        <p className="annualGuide">{billingPeriod === "annual" ? "연간 결제 시 월 환산 금액을 크게 표시하며, 실제 결제는 1년 총액으로 진행됩니다." : "월 단위로 결제하며 언제든 연간 요금과 비교할 수 있습니다."}</p>
       </section>
 
       <section className="planGrid">
         {plans.map((plan) => (
           <article key={plan.id} className={`planCard ${plan.featured ? "featured" : ""}`}>
-            {plan.featured && <div className="popularBadge">BEST VALUE · 런칭 특가</div>}
-            <div className="planTop"><span>{plan.kicker}</span><h2>{plan.name}</h2></div>
-            <div className="planPrice">{plan.originalPrice && <del>{plan.originalPrice}</del>}<strong>{plan.price}</strong><small>/ 월</small></div>
+            {plan.featured && <div className="popularBadge">{billingPeriod === "annual" ? "BEST VALUE · 연간 25% 할인" : "BEST VALUE · 런칭 특가"}</div>}
+            <div className="planTop">
+              <span>{plan.kicker}</span>
+              <h2>{plan.name}</h2>
+              {billingPeriod === "annual" && plan.annualDiscount && <em className="discountBadge">연간 {plan.annualDiscount} 절약</em>}
+            </div>
+            <div className="planPrice">
+              {billingPeriod === "monthly" && plan.monthlyOriginalPrice && <del>{plan.monthlyOriginalPrice}</del>}
+              <strong>{billingPeriod === "annual" ? plan.annualMonthlyPrice : plan.monthlyPrice}</strong>
+              <small>/ 월</small>
+            </div>
+            {billingPeriod === "annual" && plan.id !== "free" && <div className="annualTotal"><span>연간 총 결제</span><b>{plan.annualTotal}</b></div>}
+            {billingPeriod === "monthly" && plan.id === "creator50" && <div className="monthlyPromo">런칭가 · 정가 99,000원에서 약 20% 할인</div>}
             <div className="planCredit"><b>{plan.credits}</b><span>{plan.videos}</span></div>
             <ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>
             <button disabled={busyPlan === plan.id} onClick={() => choosePlan(plan)}>
@@ -321,8 +354,8 @@ function PricingPage() {
                     : plan.id === "free"
                       ? "FREE 시작"
                       : billingRegistered
-                        ? `${plan.name} 구독 준비`
-                        : `${plan.name} 시작하기`}
+                        ? `${plan.name} · ${billingPeriod === "annual" ? "연간" : "월간"} 구독 준비`
+                        : `${plan.name} · ${billingPeriod === "annual" ? "연간" : "월간"} 시작`}
             </button>
           </article>
         ))}
@@ -352,7 +385,7 @@ function PricingPage() {
           <div><span>고해상도 · 프리미엄 옵션</span><strong>선택 옵션에 따라 추가 크레딧</strong></div>
         </div>
       </section>
-      <p className="pricingFineprint">영상 생성에 필요한 크레딧은 영상 길이, 해상도, 생성 모델 및 선택한 제작 옵션에 따라 달라질 수 있습니다. 자동결제는 카드 등록 후 별도의 구독 승인 단계에서 활성화됩니다.</p>
+      <p className="pricingFineprint">영상 생성에 필요한 크레딧은 영상 길이, 해상도, 생성 엔진 및 선택한 제작 옵션에 따라 달라질 수 있습니다. 연간 요금은 표시된 월 환산가를 기준으로 1년 총액을 결제하며, 크레딧은 운영 정책에 따라 매월 지급됩니다. 자동결제는 카드 등록 후 별도의 구독 승인 단계에서 활성화됩니다.</p>
       <footer className="pricingFooter">HOLOGRAM PICTURES AI · AI ASSISTANT HOLO</footer>
     </main>
   );
