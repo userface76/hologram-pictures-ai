@@ -6,6 +6,7 @@ import { directorRouter } from "./routes/director.js";
 import { paymentsRouter } from "./routes/payments.js";
 import { publicShowcaseRouter, showcaseAdminRouter } from "./routes/showcase.js";
 import { studioManageRouter } from "./routes/studioManage.js";
+import { composerRouter } from "./routes/composer.js";
 import { tossWebhookRouter } from "./routes/tossWebhook.js";
 import { requireAuth } from "./middleware/requireAuth.js";
 
@@ -22,7 +23,7 @@ app.use(publicShowcaseRouter);
 app.use("/webhooks", tossWebhookRouter);
 
 // Member billing/payment, studio management and showcase administration remain protected by Supabase auth.
-app.use("/api", requireAuth, directorRouter, paymentsRouter, showcaseAdminRouter, studioManageRouter, apiRouter);
+app.use("/api", requireAuth, directorRouter, paymentsRouter, showcaseAdminRouter, studioManageRouter, composerRouter, apiRouter);
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);
   const status = Number(err?.statusCode || err?.status || 400);
