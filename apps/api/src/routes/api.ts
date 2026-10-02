@@ -1,4 +1,5 @@
 import express, { Router } from "express";
+import multer from "multer";
 import { z } from "zod";
 import { interpretWithAstra } from "../core/astra.js";
 import type { VideoMediaInputs } from "../core/types.js";
@@ -30,6 +31,7 @@ import {
 } from "../services/renderCredits.js";
 
 export const apiRouter = Router();
+const multipartUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 30 * 1024 * 1024, files: 1 } });
 
 const imageRoleSchema = z.enum(["first_frame", "last_frame", "reference_image"]);
 const imagesSchema = z.object({
@@ -154,6 +156,20 @@ apiRouter.get("/account", async (req, res, next) => {
     const userId = userIdOf(req);
     await ensureUserAccount(userId, req.authUser?.email);
     res.json({ account: await getAccountSummary(userId) });
+  } catch (e) { next(e); }
+});
+
+apiRouter.post("/assets/upload-multipart", multipartUpload.single("file"), async (req, res, next) => {
+  try {
+    const userId = userIdOf(req);
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: "image_file_missing" });
+    const roleRaw = String(req.body?.role || "");
+    const role = imageRoleSchema.safeParse(roleRaw).success ? (roleRaw as z.infer<typeof imageRoleSchema>) : undefined;
+    const asset = await uploadImageBuffer(userId, file.buffer, file.mimetype, file.originalname || "image");
+    try { await recordAsset(userId, asset, file.originalname || "image", role); }
+    catch (error) { console.warn("Supabase asset persistence skipped:", error); }
+    res.status(201).json({ asset: { ...asset, role: role ?? null } });
   } catch (e) { next(e); }
 });
 
