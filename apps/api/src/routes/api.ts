@@ -19,6 +19,7 @@ import {
 } from "../services/database.js";
 import { archiveRemoteVideo, isR2Configured, uploadImageDataUrl } from "../services/r2Storage.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
+import { isHoloComposerConfigured } from "../services/holoComposer.js";
 import {
   isRenderCreditEnforced,
   linkRenderCreditReservation,
@@ -145,6 +146,7 @@ apiRouter.get("/system/status", (req, res) => res.json({
   creditEnforced: isRenderCreditEnforced(),
   supabase: isSupabaseConfigured(),
   r2: isR2Configured(),
+  composer: { configured: isHoloComposerConfigured(), renderer: "hyperframes-compatible" },
 }));
 
 apiRouter.get("/account", async (req, res, next) => {
