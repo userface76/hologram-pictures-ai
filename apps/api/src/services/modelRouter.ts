@@ -21,8 +21,9 @@ function isConfigured(id: string) {
     );
   }
   if (id === "minimax-h3") {
-    const demo = (process.env.DEMO_VIDEO_MODE || "true").toLowerCase() === "true";
-    return demo || Boolean(process.env.MINIMAX_API_KEY);
+    const hasKey = Boolean(process.env.MINIMAX_API_KEY);
+    const demo = (process.env.DEMO_VIDEO_MODE || (hasKey ? "false" : "true")).toLowerCase() === "true";
+    return demo || hasKey;
   }
   return false;
 }
