@@ -203,7 +203,7 @@ apiRouter.get("/jobs/:id", async (req, res, next) => {
     }
     if (!job) return res.status(404).json({ error: "job_not_found" });
 
-    if (job.status === "processing" && job.providerTaskId) {
+    if ((job.status === "queued" || job.status === "processing") && job.providerTaskId) {
       const provider = getVideoProvider(job.model);
       if (provider.status) job = await provider.status(job);
     }
