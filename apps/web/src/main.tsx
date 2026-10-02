@@ -175,17 +175,6 @@ function App() {
     rec.start();
   }
 
-  function normalizedImageType(file: File) {
-    const known = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
-    if (known.includes(file.type)) return file.type;
-    const name = file.name.toLowerCase();
-    if (/\.png$/.test(name)) return "image/png";
-    if (/\.webp$/.test(name)) return "image/webp";
-    if (/\.heic$/.test(name)) return "image/heic";
-    if (/\.heif$/.test(name)) return "image/heif";
-    return "image/jpeg";
-  }
-
   async function chooseImage(role: ImageRole, file?: File) {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
@@ -208,15 +197,12 @@ function App() {
     setStatus(`HOLO가 ${label}을 Cloudflare R2에 업로드하는 중…`);
 
     try {
-      const contentType = normalizedImageType(file);
-      const r = await fetch(`${API}/api/assets/upload-binary`, {
+      const form = new FormData();
+      form.append("file", file, file.name || "image");
+      form.append("role", role);
+      const r = await fetch(`${API}/api/assets/upload-multipart`, {
         method: "POST",
-        headers: {
-          "Content-Type": contentType,
-          "X-File-Name": encodeURIComponent(file.name || "image"),
-          "X-Image-Role": role,
-        },
-        body: file,
+        body: form,
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "업로드 실패");
