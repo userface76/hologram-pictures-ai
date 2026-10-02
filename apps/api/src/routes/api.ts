@@ -1,4 +1,4 @@
-import { Router } from "express";
+import express, { Router } from "express";
 import { z } from "zod";
 import { interpretWithAstra } from "../core/astra.js";
 import type { VideoMediaInputs } from "../core/types.js";
@@ -17,7 +17,7 @@ import {
   recordAsset,
   upsertRenderJob,
 } from "../services/database.js";
-import { archiveRemoteVideo, isR2Configured, uploadImageDataUrl } from "../services/r2Storage.js";
+import { archiveRemoteVideo, isR2Configured, uploadImageBuffer, uploadImageDataUrl } from "../services/r2Storage.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { isHoloComposerConfigured } from "../services/holoComposer.js";
 import {
@@ -154,6 +154,21 @@ apiRouter.get("/account", async (req, res, next) => {
     const userId = userIdOf(req);
     await ensureUserAccount(userId, req.authUser?.email);
     res.json({ account: await getAccountSummary(userId) });
+  } catch (e) { next(e); }
+});
+
+apiRouter.post("/assets/upload-binary", express.raw({ type: "image/*", limit: "30mb" }), async (req, res, next) => {
+  try {
+    const userId = userIdOf(req);
+    const contentType = String(req.headers["content-type"] || "").split(";")[0].trim().toLowerCase();
+    const name = decodeURIComponent(String(req.headers["x-file-name"] || "image"));
+    const roleRaw = String(req.headers["x-image-role"] || "");
+    const role = imageRoleSchema.safeParse(roleRaw).success ? (roleRaw as z.infer<typeof imageRoleSchema>) : undefined;
+    const bytes = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || []);
+    const asset = await uploadImageBuffer(userId, bytes, contentType, name);
+    try { await recordAsset(userId, asset, name, role); }
+    catch (error) { console.warn("Supabase asset persistence skipped:", error); }
+    res.status(201).json({ asset: { ...asset, role: role ?? null } });
   } catch (e) { next(e); }
 });
 
