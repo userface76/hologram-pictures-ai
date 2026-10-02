@@ -50,17 +50,12 @@ export function isR2Configured() {
   );
 }
 
-export async function uploadImageDataUrl(userId: string, dataUrl: string, originalName = "image") {
+async function putImageBytes(userId: string, bytes: Buffer, contentType: string, originalName = "image") {
   const r2 = getR2Client();
   const bucket = process.env.R2_BUCKET;
   if (!r2 || !bucket) throw new Error("R2 is not configured");
   if (!process.env.R2_PUBLIC_BASE_URL) throw new Error("R2_PUBLIC_BASE_URL is not configured");
 
-  const match = /^data:(image\/(?:jpeg|png|webp|heic|heif));base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl);
-  if (!match) throw new Error("Unsupported image format. Use JPG, PNG, WEBP, HEIC or HEIF.");
-
-  const contentType = match[1];
-  const bytes = Buffer.from(match[2], "base64");
   if (!bytes.length) throw new Error("Image is empty");
   if (bytes.length > 30 * 1024 * 1024) throw new Error("Image must be 30 MB or smaller");
 
@@ -71,7 +66,9 @@ export async function uploadImageDataUrl(userId: string, dataUrl: string, origin
     "image/heic": "heic",
     "image/heif": "heif",
   };
-  const ext = extMap[contentType] || "jpg";
+  const ext = extMap[contentType];
+  if (!ext) throw new Error("Unsupported image format. Use JPG, PNG, WEBP, HEIC or HEIF.");
+
   const safeBase = originalName.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9가-힣_-]+/g, "-").slice(0, 60) || "image";
   const key = `${tenantPrefix(userId)}/assets/${new Date().toISOString().slice(0, 10)}/${randomUUID()}-${safeBase}.${ext}`;
 
@@ -83,12 +80,25 @@ export async function uploadImageDataUrl(userId: string, dataUrl: string, origin
     CacheControl: "public, max-age=31536000, immutable",
   }));
 
-  return {
-    key,
-    url: publicUrlFor(key),
-    size: bytes.length,
-    contentType,
-  };
+  return { key, url: publicUrlFor(key), size: bytes.length, contentType };
+}
+
+export async function uploadImageBuffer(userId: string, bytes: Buffer, contentType: string, originalName = "image") {
+  return putImageBytes(userId, bytes, contentType, originalName);
+}
+
+export async function uploadImageDataUrl(userId: string, dataUrl: string, originalName = "image") {
+  const r2 = getR2Client();
+  const bucket = process.env.R2_BUCKET;
+  if (!r2 || !bucket) throw new Error("R2 is not configured");
+  if (!process.env.R2_PUBLIC_BASE_URL) throw new Error("R2_PUBLIC_BASE_URL is not configured");
+
+  const match = /^data:(image\/(?:jpeg|png|webp|heic|heif));base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl);
+  if (!match) throw new Error("Unsupported image format. Use JPG, PNG, WEBP, HEIC or HEIF.");
+
+  const contentType = match[1];
+  const bytes = Buffer.from(match[2], "base64");
+  return putImageBytes(userId, bytes, contentType, originalName);
 }
 
 export async function archiveRemoteVideo(userId: string, sourceUrl: string, jobId: string) {
