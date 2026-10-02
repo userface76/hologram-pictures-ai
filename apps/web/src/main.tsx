@@ -175,13 +175,15 @@ function App() {
     rec.start();
   }
 
-  function fileToDataUrl(file: File) {
-    return new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = () => reject(new Error("사진을 읽지 못했습니다"));
-      reader.readAsDataURL(file);
-    });
+  function normalizedImageType(file: File) {
+    const known = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+    if (known.includes(file.type)) return file.type;
+    const name = file.name.toLowerCase();
+    if (/\.png$/.test(name)) return "image/png";
+    if (/\.webp$/.test(name)) return "image/webp";
+    if (/\.heic$/.test(name)) return "image/heic";
+    if (/\.heif$/.test(name)) return "image/heif";
+    return "image/jpeg";
   }
 
   async function chooseImage(role: ImageRole, file?: File) {
@@ -206,18 +208,23 @@ function App() {
     setStatus(`HOLO가 ${label}을 Cloudflare R2에 업로드하는 중…`);
 
     try {
-      const dataUrl = await fileToDataUrl(file);
-      const r = await fetch(`${API}/api/assets/upload`, {
+      const contentType = normalizedImageType(file);
+      const r = await fetch(`${API}/api/assets/upload-binary`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: file.name, dataUrl, role }),
+        headers: {
+          "Content-Type": contentType,
+          "X-File-Name": encodeURIComponent(file.name || "image"),
+          "X-Image-Role": role,
+        },
+        body: file,
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "업로드 실패");
       if (!d.asset?.url) throw new Error("R2 공개 URL을 받지 못했습니다. R2_PUBLIC_BASE_URL을 확인해 주세요.");
+      if (localUrl) URL.revokeObjectURL(localUrl);
       setImages((prev) => ({
         ...prev,
-        [role]: { ...prev[role], asset: d.asset, uploading: false, error: null },
+        [role]: { preview: d.asset.url, asset: d.asset, uploading: false, error: null },
       }));
       setStatus(`${label} 준비 완료 · 다른 이미지를 추가하거나 아이디어를 입력하세요`);
     } catch (e: any) {
