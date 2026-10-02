@@ -73,8 +73,8 @@ export const minimaxH3Provider: VideoProvider = {
 
   async create(plan) {
     const job = newJob(plan);
-    const demo = (process.env.DEMO_VIDEO_MODE || "true").toLowerCase() === "true";
     const token = process.env.MINIMAX_API_KEY;
+    const demo = (process.env.DEMO_VIDEO_MODE || (token ? "false" : "true")).toLowerCase() === "true";
     if (demo || !token) {
       return { ...job, status: "processing", progress: 18, providerTaskId: `demo_${job.id}` };
     }
