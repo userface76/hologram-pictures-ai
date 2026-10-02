@@ -197,13 +197,28 @@ function App() {
     setStatus(`HOLO가 ${label}을 Cloudflare R2에 업로드하는 중…`);
 
     try {
-      const form = new FormData();
-      form.append("file", file, file.name || "image");
-      form.append("role", role);
-      const r = await fetch(`${API}/api/assets/upload-multipart`, {
-        method: "POST",
-        body: form,
-      });
+      async function send(blob: Blob, name: string) {
+        const form = new FormData();
+        form.append("file", blob, name || "image");
+        form.append("role", role);
+        return fetch(`${API}/api/assets/upload-multipart`, {
+          method: "POST",
+          body: form,
+        });
+      }
+
+      let r: Response;
+      try {
+        r = await send(file, file.name || "image");
+      } catch (firstError) {
+        // Some Android gallery/content-provider Files cannot be streamed directly.
+        // Materialize a fresh Blob and retry once before asking the user to re-save the image locally.
+        const bytes = await file.arrayBuffer();
+        const copy = new Blob([bytes], { type: file.type || "image/jpeg" });
+        await new Promise((resolve) => window.setTimeout(resolve, 250));
+        r = await send(copy, file.name || "image");
+      }
+
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "업로드 실패");
       if (!d.asset?.url) throw new Error("R2 공개 URL을 받지 못했습니다. R2_PUBLIC_BASE_URL을 확인해 주세요.");
@@ -324,12 +339,12 @@ function App() {
                   <input
                     ref={ref}
                     type="file"
-                    accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                    accept="image/*"
                     hidden
                     onChange={(e) => void chooseImage(role, e.target.files?.[0])}
                   />
                   {!slot.preview ? (
-                    <button className="uploadZone" onClick={() => selectImage(role)} disabled={slot.uploading || isSubmitting}>
+                    <button className="uploadZone" onClick={() => selectImage(role)} disabled={uploadingImage || isSubmitting}>
                       <span className="slotCode">{short}</span>
                       <span className="uploadPlus">＋</span>
                       <strong>{label}</strong>
@@ -344,8 +359,8 @@ function App() {
                         <strong>{slot.uploading ? `${label} 업로드 중…` : slot.asset ? `${label} 준비 완료` : `${label} 업로드 실패`}</strong>
                         {slot.error && <small>{slot.error}</small>}
                         <div className="previewActions">
-                          <button onClick={() => selectImage(role)} disabled={slot.uploading || isSubmitting}>교체</button>
-                          <button onClick={() => clearImage(role)} disabled={slot.uploading || isSubmitting}>삭제</button>
+                          <button onClick={() => selectImage(role)} disabled={uploadingImage || isSubmitting}>교체</button>
+                          <button onClick={() => clearImage(role)} disabled={uploadingImage || isSubmitting}>삭제</button>
                         </div>
                       </div>
                     </div>
