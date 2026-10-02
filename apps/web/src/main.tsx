@@ -149,7 +149,8 @@ function App() {
 
   useEffect(() => {
     if (!job || job.status === "completed" || job.status === "failed") return;
-    const timer = window.setInterval(() => { void refreshJob(true); }, 10000);
+    void refreshJob(true);
+    const timer = window.setInterval(() => { void refreshJob(true); }, 3000);
     return () => window.clearInterval(timer);
   }, [job?.id, job?.status]);
 
