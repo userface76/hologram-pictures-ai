@@ -50,6 +50,8 @@ function App() {
   const [status, setStatus] = useState("HOLO가 아이디어를 기다리고 있습니다");
   const [listening, setListening] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [requestMode, setRequestMode] = useState<"organize" | "render" | null>(null);
+  const [requestSeconds, setRequestSeconds] = useState(0);
   const [images, setImages] = useState<Record<ImageRole, ImageSlot>>({
     first_frame: blankSlot(),
     reference_image: blankSlot(),
@@ -104,8 +106,10 @@ function App() {
       return;
     }
     analyzeLockRef.current = true;
+    setRequestMode(autoRender ? "render" : "organize");
+    setRequestSeconds(0);
     setIsSubmitting(true);
-    setStatus(autoRender ? "HOLO가 영상 생성 파이프라인을 시작하는 중…" : "HOLO가 아이디어와 이미지를 분석하는 중…");
+    setStatus(autoRender ? "요청 접수 완료 · HOLO가 영상 생성 파이프라인을 시작합니다" : "요청 접수 완료 · HOLO가 아이디어와 이미지를 정리합니다");
 
     try {
       const r = await fetch(`${API}/api/${autoRender ? "render" : "command"}`, {
@@ -131,6 +135,7 @@ function App() {
     } finally {
       analyzeLockRef.current = false;
       setIsSubmitting(false);
+      setRequestMode(null);
     }
   }
 
@@ -153,6 +158,16 @@ function App() {
       if (!silent) setStatus(`상태 조회 오류 · ${e.message}`);
     }
   }
+
+  useEffect(() => {
+    if (!requestMode) return;
+    setRequestSeconds(0);
+    const startedAt = Date.now();
+    const timer = window.setInterval(() => {
+      setRequestSeconds(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [requestMode]);
 
   useEffect(() => {
     if (!job || job.status === "completed" || job.status === "failed") return;
@@ -460,12 +475,24 @@ function App() {
       </section>
 
       {isSubmitting && (
-        <div className="loadingOverlay">
-          <div className="loadingCard">
+        <div className="loadingOverlay" role="status" aria-live="assertive" aria-busy="true">
+          <div className="loadingCard requestStatusCard">
+            <div className="requestStatusTop">
+              <span className="requestBadge">REQUEST ACCEPTED</span>
+              <b>{requestSeconds}s</b>
+            </div>
             <div className="holoLoader"><span /><span /><span /></div>
-            <strong>HOLO가 생각을 영상 언어로 정리하고 있습니다</strong>
-            <p>{imageCount ? "이미지 역할과 아이디어를 분석해 최적의 영상 엔진 렌더 파이프라인에 연결하는 중…" : "아이디어를 영상 생성 프롬프트로 설계하고 렌더 작업을 준비하는 중…"}</p>
-            <div className="loadingSteps"><i className="on">IDEA</i><i className="on">HOLO CORE</i><i>PROMPT</i><i>VIDEO ENGINE</i></div>
+            <strong>{requestMode === "render" ? "영상 생성 요청을 처리하고 있습니다" : "HOLO가 아이디어를 정리하고 있습니다"}</strong>
+            <p className="requestNotice">요청은 이미 접수되었습니다. 다시 누르지 않아도 됩니다.</p>
+            <p>{requestMode === "render"
+              ? (imageCount ? "이미지와 프롬프트를 확인한 뒤 MiniMax 렌더 작업을 시작합니다." : "프롬프트를 확정하고 MiniMax 렌더 작업을 시작합니다.")
+              : "HOLO Director가 스킬과 아이디어를 분석해 프롬프트를 정리하는 중입니다."}</p>
+            <div className="loadingSteps">
+              <i className="on">접수 완료</i>
+              <i className="on">HOLO 분석</i>
+              <i>{requestMode === "render" ? "렌더 준비" : "프롬프트 정리"}</i>
+              <i>{requestMode === "render" ? "MiniMax" : "완료"}</i>
+            </div>
           </div>
         </div>
       )}
