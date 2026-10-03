@@ -59,6 +59,7 @@ function App() {
   const firstFileRef = useRef<HTMLInputElement | null>(null);
   const referenceFileRef = useRef<HTMLInputElement | null>(null);
   const lastFileRef = useRef<HTMLInputElement | null>(null);
+  const analyzeLockRef = useRef(false);
 
   const orbitNodes = useMemo(() => nodeLabels.map((label, i) => ({ label, angle: (360 / nodeLabels.length) * i })), []);
   const globePoints = useMemo(() => Array.from({ length: 84 }, (_, i) => {
@@ -89,6 +90,10 @@ function App() {
   }
 
   async function analyze(autoRender = false) {
+    if (analyzeLockRef.current) {
+      setStatus("HOLO가 이미 처리 중입니다. 잠시만 기다려 주세요");
+      return;
+    }
     if (uploadingImage) {
       setStatus("사진 업로드가 끝난 뒤 다시 시도해 주세요");
       return;
@@ -98,7 +103,8 @@ function App() {
       setStatus(firstError ? `사진 업로드 실패 · ${firstError}` : "사진 업로드가 아직 완료되지 않았습니다");
       return;
     }
-    if (autoRender) setIsSubmitting(true);
+    analyzeLockRef.current = true;
+    setIsSubmitting(true);
     setStatus(autoRender ? "HOLO가 영상 생성 파이프라인을 시작하는 중…" : "HOLO가 아이디어와 이미지를 분석하는 중…");
 
     try {
@@ -123,7 +129,8 @@ function App() {
     } catch (e: any) {
       setStatus(`연결 오류 · ${e.message}`);
     } finally {
-      if (autoRender) setIsSubmitting(false);
+      analyzeLockRef.current = false;
+      setIsSubmitting(false);
     }
   }
 
@@ -387,7 +394,9 @@ function App() {
             <div className="commandBar">
               <button className={listening ? "mic active" : "mic"} onClick={voice} disabled={isSubmitting} title="말해서 아이디어 입력">◉</button>
               <textarea value={command} onChange={(e) => setCommand(e.target.value)} placeholder="아이디어를 자유롭게 말하거나 입력하세요. HOLO가 영상 프롬프트로 정리합니다." disabled={isSubmitting} />
-              <button onClick={() => void analyze(false)} disabled={isSubmitting || uploadingImage || imageNotReady}>HOLO 정리</button>
+              <button onClick={() => void analyze(false)} disabled={isSubmitting || uploadingImage || imageNotReady}>
+                {isSubmitting ? "정리 중…" : "HOLO 정리"}
+              </button>
               <button className="primary" onClick={() => void analyze(true)} disabled={isSubmitting || uploadingImage || imageNotReady}>
                 {uploadingImage ? "사진 업로드 중…" : imageNotReady ? "사진 확인 필요" : isSubmitting ? "준비 중…" : "영상 만들기"}
               </button>
