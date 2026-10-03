@@ -52,6 +52,7 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [requestMode, setRequestMode] = useState<"organize" | "render" | null>(null);
   const [requestSeconds, setRequestSeconds] = useState(0);
+  const [requestError, setRequestError] = useState<string | null>(null);
   const [images, setImages] = useState<Record<ImageRole, ImageSlot>>({
     first_frame: blankSlot(),
     reference_image: blankSlot(),
@@ -106,6 +107,7 @@ function App() {
       return;
     }
     analyzeLockRef.current = true;
+    setRequestError(null);
     setRequestMode(autoRender ? "render" : "organize");
     setRequestSeconds(0);
     setIsSubmitting(true);
@@ -131,7 +133,9 @@ function App() {
         setStatus(`HOLO 프롬프트 설계 완료 · ${d.source === "astra" ? "GPT-5.6 Sol" : "로컬 파서"}`);
       }
     } catch (e: any) {
-      setStatus(`연결 오류 · ${e.message}`);
+      const message = e?.message || "요청 처리 중 오류가 발생했습니다";
+      setRequestError(message);
+      setStatus(autoRender ? `영상 생성 요청 실패 · ${message}` : `HOLO 정리 실패 · ${message}`);
     } finally {
       analyzeLockRef.current = false;
       setIsSubmitting(false);
@@ -422,6 +426,14 @@ function App() {
             </div>
           </div>
         </div>
+
+        {requestError && (
+          <div className="renderFailure requestFailure" role="alert">
+            <strong>{requestMode === "render" ? "영상 생성 요청에 문제가 있습니다" : "HOLO 요청에 문제가 있습니다"}</strong>
+            <p>{requestError}</p>
+            <button onClick={() => setRequestError(null)}>확인</button>
+          </div>
+        )}
 
         {plan && (
           <div className="plan">

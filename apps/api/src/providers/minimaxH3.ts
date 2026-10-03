@@ -27,6 +27,12 @@ function normalizeRatio(value: string) {
   return allowed.has(value) ? value : "16:9";
 }
 
+function normalizeDuration(value: unknown) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 8;
+  return Math.max(4, Math.min(15, Math.round(parsed)));
+}
+
 function mapProgress(status: string) {
   if (status === "queued") return 15;
   if (status === "running") return 55;
@@ -84,7 +90,7 @@ export const minimaxH3Provider: VideoProvider = {
       model: process.env.MINIMAX_H3_MODEL || "MiniMax-H3",
       content,
       resolution: normalizeResolution(plan.resolution),
-      duration: Math.max(4, Math.min(15, Math.round(plan.duration))),
+      duration: normalizeDuration(plan.duration),
       ratio: frameMode ? "adaptive" : normalizeRatio(plan.aspectRatio),
     };
 
