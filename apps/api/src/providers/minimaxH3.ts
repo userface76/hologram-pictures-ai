@@ -44,6 +44,9 @@ function sanitizePromptForMiniMax(text: string) {
     [/\bSpider-?Man(?:-inspired)?\b/gi, "agile web-themed masked hero"],
     [/\bBatman(?:-inspired)?\b/gi, "dark caped vigilante archetype"],
     [/\bSuperman(?:-inspired)?\b/gi, "bright caped flying hero archetype"],
+    [/\uC544\uC774\uC5B8\\s*\uB9E8(?:\\s*\uC2A4\uD0C0\uC77C)?/gi, "\uBD89\uC740\uC0C9\uACFC \uAE08\uC0C9\uC758 \uBBF8\uB798\uD615 \uAE08\uC18D \uAC11\uC637 \uC601\uC6C5"],
+    [/\uC6D0\uB354\\s*\uC6B0\uBA3C(?:\\s*\uC2A4\uD0C0\uC77C)?/gi, "\uD669\uAE08 \uD314 \uBCF4\uD638\uAD6C\uB97C \uCC29\uC6A9\uD55C \uC2E0\uD654\uC801 \uC804\uC0AC \uC601\uC6C5"],
+    [/\uD1A0\uB974(?:\\s*\uC2A4\uD0C0\uC77C)?/gi, "\uC740\uBE5B \uD574\uBA38\uC640 \uBC88\uAC1C\uB97C \uC0AC\uC6A9\uD558\uB294 \uC2E0\uD654\uC801 \uC601\uC6C5"],
   ];
 
   for (const [pattern, replacement] of replacements) prompt = prompt.replace(pattern, replacement);
