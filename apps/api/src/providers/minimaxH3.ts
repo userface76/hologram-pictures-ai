@@ -33,6 +33,40 @@ function normalizeDuration(value: unknown) {
   return Math.max(4, Math.min(15, Math.round(parsed)));
 }
 
+function sanitizePromptForMiniMax(text: string) {
+  let prompt = String(text || "");
+
+  const replacements: Array<[RegExp, string]> = [
+    [/\bIron\s*Man(?:-inspired)?\b/gi, "red-and-gold futuristic armored hero"],
+    [/\bWonder\s*Woman(?:-inspired)?\b/gi, "golden-bracer mythic warrior heroine"],
+    [/\bThor(?:-inspired)?\b/gi, "mythic lightning hero with a silver hammer"],
+    [/\bCaptain\s*America(?:-inspired)?\b/gi, "patriotic shield-bearing hero"],
+    [/\bSpider-?Man(?:-inspired)?\b/gi, "agile web-themed masked hero"],
+    [/\bBatman(?:-inspired)?\b/gi, "dark caped vigilante archetype"],
+    [/\bSuperman(?:-inspired)?\b/gi, "bright caped flying hero archetype"],
+  ];
+
+  for (const [pattern, replacement] of replacements) prompt = prompt.replace(pattern, replacement);
+
+  const mentionsMinor = /\b(child|children|kid|kids|boy|girl|minor|teen|teenager)\b/i.test(prompt);
+  if (mentionsMinor) {
+    prompt = prompt
+      .replace(/\battacks?\s+once\b/gi, "performs one non-contact action beat")
+      .replace(/\battacks?\b/gi, "moves toward")
+      .replace(/\bcounterattacks?\b/gi, "responds with a defensive action")
+      .replace(/\bcombat\s+space\b/gi, "cinematic training space")
+      .replace(/\bcombat\b/gi, "non-contact superhero training")
+      .replace(/\bfight(?:ing)?\b/gi, "playful action choreography")
+      .replace(/\bstrikes?\b/gi, "performs a dramatic gesture")
+      .replace(/\bhits?\b/gi, "passes near")
+      .replace(/\bimpact\b/gi, "energy interaction");
+    prompt += "\nKeep all action family-friendly, clearly staged, non-contact, non-graphic, and playful. No injury, pain, or physical harm.";
+  }
+
+  return prompt;
+}
+
+
 function mapProgress(status: string) {
   if (status === "queued") return 15;
   if (status === "running") return 55;
@@ -51,7 +85,7 @@ function minimaxErrorMessage(status: number, data: Record<string, any>) {
 
 function buildContent(plan: VideoIntent) {
   const content: Array<Record<string, any>> = [
-    { type: "text", text: plan.refinedPrompt },
+    { type: "text", text: sanitizePromptForMiniMax(plan.refinedPrompt) },
   ];
 
   const first = plan.firstFrameImageUrl || (plan.sourceImageRole === "first_frame" ? plan.sourceImageUrl : undefined);
