@@ -62,7 +62,14 @@ function sanitizePromptForMiniMax(text: string) {
       .replace(/\bfight(?:ing)?\b/gi, "playful action choreography")
       .replace(/\bstrikes?\b/gi, "performs a dramatic gesture")
       .replace(/\bhits?\b/gi, "passes near")
-      .replace(/\bimpact\b/gi, "energy interaction");
+      .replace(/\bimpact\b/gi, "energy interaction")
+      .replace(/\uC804\uD22C/gi, "\uBE44\uC811\uCD09 \uC601\uC6C5 \uD6C8\uB828")
+      .replace(/\uB300\uACB0/gi, "\uC5F0\uCD9C\uB41C \uC601\uC6C5 \uD37C\uD3EC\uBA3C\uC2A4")
+      .replace(/\uC2F8\uC6C0|\uACA9\uD22C/gi, "\uBE44\uC811\uCD09 \uC561\uC158 \uC5F0\uCD9C")
+      .replace(/\uACF5\uACA9/gi, "\uC811\uCD09 \uC5C6\uB294 \uB3D9\uC791")
+      .replace(/\uBC18\uACA9/gi, "\uBC29\uC5B4 \uB3D9\uC791")
+      .replace(/\uD0C0\uACA9/gi, "\uC5F0\uCD9C \uB3D9\uC791")
+      .replace(/\uCDA9\uB3CC/gi, "\uC5D0\uB108\uC9C0 \uAD50\uCC28 \uC5F0\uCD9C");
     prompt += "\nKeep all action family-friendly, clearly staged, non-contact, non-graphic, and playful. No injury, pain, or physical harm.";
   }
 
