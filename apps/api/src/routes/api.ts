@@ -11,6 +11,7 @@ import {
   ensureUserAccount,
   getAccountSummary,
   getRenderJob,
+  getStudioCounts,
   listAssets,
   listProjects,
   listRenderJobs,
@@ -200,8 +201,11 @@ apiRouter.post("/assets/upload", async (req, res, next) => {
 });
 
 apiRouter.get("/assets", async (req, res, next) => {
-  try { res.json({ assets: await listAssets(userIdOf(req)) }); }
-  catch (e) { next(e); }
+  try {
+    const userId = userIdOf(req);
+    const [assets, counts] = await Promise.all([listAssets(userId), getStudioCounts(userId)]);
+    res.json({ assets, totalCount: counts.assets });
+  } catch (e) { next(e); }
 });
 
 apiRouter.get("/models", (_req, res) => res.json({ models: listVideoProviders() }));
@@ -216,12 +220,18 @@ apiRouter.get("/jobs", async (req, res, next) => {
   } catch (e) { next(e); }
 });
 apiRouter.get("/projects", async (req, res, next) => {
-  try { res.json({ projects: await listProjects(userIdOf(req)) }); }
-  catch (e) { next(e); }
+  try {
+    const userId = userIdOf(req);
+    const [projects, counts] = await Promise.all([listProjects(userId), getStudioCounts(userId)]);
+    res.json({ projects, totalCount: counts.projects });
+  } catch (e) { next(e); }
 });
 apiRouter.get("/videos", async (req, res, next) => {
-  try { res.json({ videos: await listVideos(userIdOf(req)) }); }
-  catch (e) { next(e); }
+  try {
+    const userId = userIdOf(req);
+    const [videos, counts] = await Promise.all([listVideos(userId), getStudioCounts(userId)]);
+    res.json({ videos, totalCount: counts.videos });
+  } catch (e) { next(e); }
 });
 
 apiRouter.get("/jobs/:id", async (req, res, next) => {

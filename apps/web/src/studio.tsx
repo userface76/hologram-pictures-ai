@@ -123,6 +123,7 @@ function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [totals, setTotals] = useState({ projects: 0, videos: 0, assets: 0 });
   const [jobs, setJobs] = useState<Job[]>([]);
   const [creditStates, setCreditStates] = useState<Record<string, CreditState>>({});
   const [loading, setLoading] = useState(true);
@@ -143,6 +144,11 @@ function App() {
       setProjects(p.projects || []);
       setVideos(v.videos || []);
       setAssets(a.assets || []);
+      setTotals({
+        projects: Number.isFinite(Number(p.totalCount)) ? Number(p.totalCount) : (p.projects || []).length,
+        videos: Number.isFinite(Number(v.totalCount)) ? Number(v.totalCount) : (v.videos || []).length,
+        assets: Number.isFinite(Number(a.totalCount)) ? Number(a.totalCount) : (a.assets || []).length,
+      });
       setJobs(loadedJobs);
 
       const failed = loadedJobs.filter((job) => job.status === "failed").slice(0, 5);
@@ -218,6 +224,7 @@ function App() {
     try {
       await deleteJson(`/api/studio/projects/${project.id}`);
       setProjects((prev) => prev.filter((item) => item.id !== project.id));
+      setTotals((prev) => ({ ...prev, projects: Math.max(0, prev.projects - 1) }));
       setNotice("프로젝트를 삭제했습니다.");
     } catch (e: any) { setError(e?.message || "프로젝트 삭제 실패"); }
     finally { setBusyId(""); }
@@ -230,6 +237,7 @@ function App() {
     try {
       const result = await deleteJson(`/api/studio/videos/${video.id}`);
       setVideos((prev) => prev.filter((item) => item.id !== video.id));
+      setTotals((prev) => ({ ...prev, videos: Math.max(0, prev.videos - 1) }));
       setNotice(result.storageCleanup?.removed ? "영상과 저장 파일을 삭제했습니다." : "영상 기록을 삭제했습니다. 저장 파일 정리는 별도로 확인해 주세요.");
     } catch (e: any) { setError(e?.message || "영상 삭제 실패"); }
     finally { setBusyId(""); }
@@ -242,6 +250,7 @@ function App() {
     try {
       const result = await deleteJson(`/api/studio/assets/${asset.id}`);
       setAssets((prev) => prev.filter((item) => item.id !== asset.id));
+      setTotals((prev) => ({ ...prev, assets: Math.max(0, prev.assets - 1) }));
       setNotice(result.storageCleanup?.removed ? "이미지와 저장 파일을 삭제했습니다." : "이미지 기록을 삭제했습니다. 저장 파일 정리는 별도로 확인해 주세요.");
     } catch (e: any) { setError(e?.message || "이미지 삭제 실패"); }
     finally { setBusyId(""); }
@@ -281,9 +290,9 @@ function App() {
       </section>
 
       <section className="studioSummary three">
-        <article><strong>{projects.length}</strong><span>프로젝트</span></article>
-        <article><strong>{videos.length}</strong><span>완성 영상</span></article>
-        <article><strong>{assets.length}</strong><span>업로드 이미지</span></article>
+        <article><strong>{totals.projects}</strong><span>프로젝트</span></article>
+        <article><strong>{totals.videos}</strong><span>완성 영상</span></article>
+        <article><strong>{totals.assets}</strong><span>업로드 이미지</span></article>
       </section>
 
       {recentJobs.length > 0 && (

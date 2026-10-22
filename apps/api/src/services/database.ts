@@ -195,6 +195,27 @@ export async function recordAsset(
   return result.data;
 }
 
+export async function getStudioCounts(userId: string) {
+  const db = getSupabaseAdmin();
+  if (!db) return { projects: 0, videos: 0, assets: 0 };
+
+  const [projectsResult, videosResult, assetsResult] = await Promise.all([
+    db.from("projects").select("id", { count: "exact", head: true }).eq("user_id", userId),
+    db.from("videos").select("id", { count: "exact", head: true }).eq("user_id", userId),
+    db.from("assets").select("id", { count: "exact", head: true }).eq("user_id", userId),
+  ]);
+
+  if (projectsResult.error) throw projectsResult.error;
+  if (videosResult.error) throw videosResult.error;
+  if (assetsResult.error) throw assetsResult.error;
+
+  return {
+    projects: projectsResult.count ?? 0,
+    videos: videosResult.count ?? 0,
+    assets: assetsResult.count ?? 0,
+  };
+}
+
 export async function listProjects(userId: string, limit = 30) {
   const db = getSupabaseAdmin();
   if (!db) return [];
