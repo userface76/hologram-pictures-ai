@@ -41,10 +41,10 @@
 8개 카테고리를 다시 검토했으며, 이미 기록된 Motion Cue Conflict Check와 Korean Dialogue Duration Gate는 중복 채택하지 않는다. 아래는 **별도 TTS 제어** 및 **멀티클립 연결**을 다루는 추가 운영 스킬이다. HOLO 실제 적용·성능 향상은 아직 검증 전이다.
 
 ### 3. MiniMax Korean Speech Locale & Pause Contract — 한국어 음성 언어·쉼 제어
-- **핵심 원리:** MiniMax T2A HTTP 공식 API는 \`language_boost\`에 \`Korean\`을 지원하고 \`voice_setting.speed\`를 제공한다. 또한 텍스트 중간에 \`<#0.4#>\`와 같은 쉼 마커를 넣을 수 있고, \`subtitle_enable\` 및 \`subtitle_type\`으로 문장/단어 수준 타임스탬프를 받을 수 있다. 이는 10/30 기존 'Korean Dialogue Duration Gate'의 **실행 가능한 API 입력·출력 제어 계층**이다.
+- **핵심 원리:** MiniMax T2A HTTP 공식 API는 `language_boost`에 `Korean`을 지원하고 `voice_setting.speed`를 제공한다. 또한 텍스트 중간에 `<#0.4#>`와 같은 쉼 마커를 넣을 수 있고, `subtitle_enable` 및 `subtitle_type`으로 문장/단어 수준 타임스탬프를 받을 수 있다. 이는 10/30 기존 'Korean Dialogue Duration Gate'의 **실행 가능한 API 입력·출력 제어 계층**이다.
 - **적용 조건:** HOLO가 MiniMax **별도 TTS API**를 사용하는 경우. 영상 모델 H3의 내장 음성 생성에는 동일한 필드가 있다는 근거가 없으므로 그대로 전송하지 않는다.
-- **좋은 예시:** 10초 광고용 대사를 미리 2문장으로 줄인 뒤, 지원되는 TTS 요청에 \`language_boost:"Korean"\`, \`voice_setting.speed:1\`, 필요할 때 문장 사이 \`<#0.3#>\`을 설정한다. 응답의 실제 오디오 길이와 문장/단어 타임스탬프를 읽어 HOLO Composer에서 음성을 임의 가속하지 않고 컷 길이를 조절한다.
-- **피해야 할 경우:** \`language_boost\`만으로 중국어 혼입이 완전히 해결된다고 보장하는 것, H3 영상 생성 API에 TTS 전용 필드를 넣는 것, 쉼 마커를 발화 중간에 남발하는 것, 속도를 자동으로 과도하게 높여 분량을 맞추는 것.
+- **좋은 예시:** 10초 광고용 대사를 미리 2문장으로 줄인 뒤, 지원되는 TTS 요청에 `language_boost:"Korean"`, `voice_setting.speed:1`, 필요할 때 문장 사이 `<#0.3#>`을 설정한다. 응답의 실제 오디오 길이와 문장/단어 타임스탬프를 읽어 HOLO Composer에서 음성을 임의 가속하지 않고 컷 길이를 조절한다.
+- **피해야 할 경우:** `language_boost`만으로 중국어 혼입이 완전히 해결된다고 보장하는 것, H3 영상 생성 API에 TTS 전용 필드를 넣는 것, 쉼 마커를 발화 중간에 남발하는 것, 속도를 자동으로 과도하게 높여 분량을 맞추는 것.
 - **검증:** 동일한 한국어 3개 대사(짧음/중간/긴 문장)에 대해 auto vs Korean 비교; 원본 TTS와 최종 MP4의 발화 속도·언어·오디오 길이·타임스탬프 차이 기록. 음성 언어 인식 결과는 사람 검수.
 - **카테고리:** 광고·브랜드, 숏폼, 인물·캐릭터 = 우선; 제품·푸드, 패션·뷰티 = 내레이션 시; 시네마틱, 애니·판타지 = 대사 시; 아트·실험 = 선택.
 - **공식 출처 (2026-10-30 확인):** https://platform.minimax.io/docs/api-reference/speech-t2a-http (language_boost Korean, voice speed, pause marker, subtitle timestamps)
