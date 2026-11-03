@@ -43,6 +43,79 @@ function blankSlot(): ImageSlot {
   return { preview: null, asset: null, uploading: false, error: null };
 }
 
+async function normalizeImageForVideo(file: File): Promise<{ blob: Blob; name: string; changed: boolean; width: number; height: number }> {
+  const MIN_SIDE = 256;
+  const MAX_SIDE = 5760;
+
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    return { blob: file, name: file.name || "image", changed: false, width: 0, height: 0 };
+  }
+
+  const sourceWidth = bitmap.width;
+  const sourceHeight = bitmap.height;
+  if (!sourceWidth || !sourceHeight) {
+    bitmap.close();
+    return { blob: file, name: file.name || "image", changed: false, width: sourceWidth, height: sourceHeight };
+  }
+
+  let scale = Math.min(1, MAX_SIDE / sourceWidth, MAX_SIDE / sourceHeight);
+  let targetWidth = Math.max(1, Math.round(sourceWidth * scale));
+  let targetHeight = Math.max(1, Math.round(sourceHeight * scale));
+
+  if (targetWidth < MIN_SIDE || targetHeight < MIN_SIDE) {
+    const upscale = Math.max(MIN_SIDE / targetWidth, MIN_SIDE / targetHeight);
+    targetWidth = Math.round(targetWidth * upscale);
+    targetHeight = Math.round(targetHeight * upscale);
+  }
+
+  // Extremely narrow/tall images can violate the provider's max side after the minimum-side upscale.
+  // In that case fit the image inside a valid canvas and pad the remaining area without cropping.
+  const canvasWidth = Math.min(MAX_SIDE, Math.max(MIN_SIDE, targetWidth));
+  const canvasHeight = Math.min(MAX_SIDE, Math.max(MIN_SIDE, targetHeight));
+  const fitScale = Math.min(canvasWidth / sourceWidth, canvasHeight / sourceHeight);
+  const drawWidth = Math.max(1, Math.round(sourceWidth * fitScale));
+  const drawHeight = Math.max(1, Math.round(sourceHeight * fitScale));
+  const offsetX = Math.round((canvasWidth - drawWidth) / 2);
+  const offsetY = Math.round((canvasHeight - drawHeight) / 2);
+
+  const changed = canvasWidth !== sourceWidth || canvasHeight !== sourceHeight;
+  if (!changed) {
+    bitmap.close();
+    return { blob: file, name: file.name || "image", changed: false, width: sourceWidth, height: sourceHeight };
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    bitmap.close();
+    return { blob: file, name: file.name || "image", changed: false, width: sourceWidth, height: sourceHeight };
+  }
+
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+  ctx.drawImage(bitmap, offsetX, offsetY, drawWidth, drawHeight);
+  bitmap.close();
+
+  const mime = file.type === "image/png" ? "image/png" : "image/jpeg";
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (result) => result ? resolve(result) : reject(new Error("이미지 규격 변환에 실패했습니다")),
+      mime,
+      mime === "image/jpeg" ? 0.94 : undefined,
+    );
+  });
+
+  const base = (file.name || "image").replace(/\.[^.]+$/, "");
+  const ext = mime === "image/png" ? "png" : "jpg";
+  return { blob, name: `${base}-holo.${ext}`, changed: true, width: canvasWidth, height: canvasHeight };
+}
+
+
 function App() {
   const [command, setCommand] = useState("아이디어를 자유롭게 적어주세요. HOLO가 장면, 분위기, 카메라와 움직임을 영상 프롬프트로 정리합니다.");
   const [plan, setPlan] = useState<Plan | null>(null);
@@ -223,6 +296,11 @@ function App() {
     setStatus(`HOLO가 ${label}을 Cloudflare R2에 업로드하는 중…`);
 
     try {
+      const normalized = await normalizeImageForVideo(file);
+      if (normalized.changed) {
+        setStatus(`${label} 규격 자동 보정 완료 · ${normalized.width}×${normalized.height}px · 업로드 중…`);
+      }
+
       async function send(blob: Blob, name: string) {
         const form = new FormData();
         form.append("file", blob, name || "image");
@@ -235,14 +313,14 @@ function App() {
 
       let r: Response;
       try {
-        r = await send(file, file.name || "image");
+        r = await send(normalized.blob, normalized.name);
       } catch (firstError) {
         // Some Android gallery/content-provider Files cannot be streamed directly.
         // Materialize a fresh Blob and retry once before asking the user to re-save the image locally.
-        const bytes = await file.arrayBuffer();
-        const copy = new Blob([bytes], { type: file.type || "image/jpeg" });
+        const bytes = await normalized.blob.arrayBuffer();
+        const copy = new Blob([bytes], { type: normalized.blob.type || file.type || "image/jpeg" });
         await new Promise((resolve) => window.setTimeout(resolve, 250));
-        r = await send(copy, file.name || "image");
+        r = await send(copy, normalized.name);
       }
 
       const d = await r.json();
