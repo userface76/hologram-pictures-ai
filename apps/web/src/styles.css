@@ -6,3 +6,200 @@
 .requestStatusTop b{font-size:13px;color:#dffcff;letter-spacing:.08em}
 .requestNotice{margin:10px 0!important;padding:9px 10px;border:1px solid rgba(103,232,249,.18);border-radius:9px;background:rgba(13,69,82,.24);color:#c9fbff!important;opacity:1!important;font-weight:700}
 @media(max-width:680px){.loadingOverlay{padding:14px}.loadingCard{width:100%;max-width:430px;padding:24px 18px}.requestStatusTop{margin-bottom:4px}}
+
+
+/* HOLO ecosystem hero v2 */
+.worldStage{
+  height:760px;
+  overflow:hidden;
+  isolation:isolate;
+  background:
+    radial-gradient(circle at 50% 44%,rgba(6,126,164,.16),transparent 34%),
+    radial-gradient(circle at 50% 62%,rgba(0,224,255,.07),transparent 42%);
+}
+.worldStage:before{
+  content:"";
+  position:absolute;
+  left:50%;
+  bottom:54px;
+  width:min(1380px,96vw);
+  height:220px;
+  transform:translateX(-50%) perspective(700px) rotateX(72deg);
+  border:1px solid rgba(79,230,255,.18);
+  border-radius:50%;
+  box-shadow:
+    0 0 70px rgba(28,210,255,.08),
+    inset 0 0 55px rgba(19,180,225,.07);
+  pointer-events:none;
+}
+.heroGlow{
+  position:absolute;
+  left:50%;
+  top:45%;
+  border-radius:50%;
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+  filter:blur(48px);
+  opacity:.48;
+}
+.heroGlowA{width:720px;height:720px;background:rgba(0,189,255,.13)}
+.heroGlowB{width:1120px;height:320px;background:rgba(0,107,153,.12)}
+
+.ecosystemScene.scene3d{
+  width:min(1420px,98vw);
+  height:700px;
+  transform:
+    rotateX(calc(var(--my)*-1deg))
+    rotateY(calc(var(--mx)*1.8deg))
+    translate3d(calc(var(--mx)*7px),calc(var(--my)*4px),0);
+}
+.ecosystemScene .globeShell{
+  width:680px;
+  height:680px;
+  filter:drop-shadow(0 0 70px rgba(26,213,255,.34));
+}
+.ecosystemScene .globeShell:before{
+  border-color:rgba(106,239,255,.32);
+  box-shadow:
+    inset 0 0 150px rgba(10,176,222,.08),
+    0 0 120px rgba(11,155,205,.16);
+}
+.ecosystemScene .globeShell:after{inset:46px}
+.ecosystemScene .meridian{
+  width:680px;height:680px;margin:-340px;
+  border-color:rgba(90,229,255,.15);
+}
+.ecosystemScene .latitude{
+  width:590px;height:590px;
+}
+.ecosystemScene .globePoint{
+  font-size:8px;
+  opacity:.82;
+  transform-style:preserve-3d;
+}
+.ecosystemScene .globePoint.labeled{
+  font-size:9px;
+  background:rgba(1,13,24,.72);
+}
+.ecosystemScene .dataCube{
+  width:760px;height:760px;
+  border-color:rgba(105,230,255,.10);
+}
+.ecosystemScene .cubeMid{width:880px;height:880px}
+.ecosystemScene .connection{width:520px;opacity:.52}
+.ecosystemScene .dataNode{
+  transform:rotate(var(--angle)) translateX(520px) rotate(calc(-1 * var(--angle))) translate(-50%,-50%);
+  min-width:150px;
+  padding:12px 18px;
+  border-radius:14px;
+  border-color:rgba(93,235,255,.45);
+  background:
+    linear-gradient(135deg,rgba(6,42,58,.93),rgba(2,17,29,.86));
+  box-shadow:
+    0 0 28px rgba(32,214,255,.12),
+    inset 0 0 18px rgba(93,235,255,.06);
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.14em;
+}
+.ecosystemScene .dataNode:nth-of-type(1),
+.ecosystemScene .dataNode:nth-of-type(2),
+.ecosystemScene .dataNode:nth-of-type(3),
+.ecosystemScene .dataNode:nth-of-type(5){
+  min-width:190px;
+  font-size:13px;
+  color:#e6fdff;
+  border-color:rgba(103,241,255,.58);
+  box-shadow:
+    0 0 34px rgba(27,217,255,.18),
+    inset 0 0 22px rgba(93,235,255,.08);
+}
+.ecosystemScene .pulseDot{
+  width:7px;height:7px;
+}
+.ecosystemScene .holoCore{
+  width:250px;height:250px;
+  filter:drop-shadow(0 0 50px rgba(40,220,255,.5));
+}
+.ecosystemScene .coreInner{
+  width:168px;height:168px;
+  background:
+    radial-gradient(circle at 50% 42%,rgba(34,170,205,.78),rgba(4,30,45,.97) 52%,#02101b 74%);
+}
+.ecosystemScene .coreInner strong{font-size:13px}
+.ecosystemScene .coreInner span{font-size:35px}
+.ecosystemScene .coreInner em{font-size:10px}
+.ecosystemScene .coreInner small{font-size:7px}
+
+.ecosystemLegend{
+  position:absolute;
+  left:50%;
+  bottom:82px;
+  transform:translateX(-50%);
+  display:flex;
+  align-items:center;
+  gap:10px;
+  z-index:15;
+  color:rgba(203,250,255,.72);
+  font-size:8px;
+  letter-spacing:.17em;
+  white-space:nowrap;
+}
+.ecosystemLegend i{
+  display:block;
+  width:42px;
+  height:1px;
+  background:linear-gradient(90deg,transparent,#56e9ff,transparent);
+}
+.worldCaption{
+  bottom:26px;
+  z-index:18;
+  padding:9px 20px;
+  border-radius:999px;
+  background:rgba(1,13,24,.34);
+  backdrop-filter:blur(8px);
+}
+.worldCaption strong{font-size:12px;letter-spacing:.32em}
+.worldCaption span{font-size:10px;opacity:.6}
+.console{margin:-44px auto 0}
+
+@media(max-width:900px){
+  .worldStage{height:620px}
+  .ecosystemScene.scene3d{width:1180px;height:590px;transform:scale(.82)}
+  .ecosystemScene .dataNode{transform:rotate(var(--angle)) translateX(445px) rotate(calc(-1 * var(--angle))) translate(-50%,-50%)}
+  .ecosystemScene .connection{width:445px}
+  .console{margin:-28px auto 0}
+}
+
+@media(max-width:680px){
+  .topbar{padding:18px 18px 8px}
+  .worldStage{
+    height:560px;
+    margin-top:-8px;
+    overflow:hidden;
+  }
+  .ecosystemScene.scene3d{
+    width:980px;
+    height:560px;
+    transform:scale(.64);
+  }
+  .ecosystemScene .globeShell{width:650px;height:650px}
+  .ecosystemScene .meridian{width:650px;height:650px;margin:-325px}
+  .ecosystemScene .latitude{width:565px;height:565px}
+  .ecosystemScene .dataNode{
+    transform:rotate(var(--angle)) translateX(490px) rotate(calc(-1 * var(--angle))) translate(-50%,-50%);
+    min-width:155px;
+    font-size:10px;
+  }
+  .ecosystemScene .connection{width:490px}
+  .worldCaption{
+    bottom:16px;
+    width:90%;
+    padding:8px 12px;
+  }
+  .worldCaption strong{font-size:9px;letter-spacing:.2em}
+  .worldCaption span{font-size:8px}
+  .ecosystemLegend{bottom:70px;font-size:7px;gap:7px}
+  .ecosystemLegend i{width:22px}
+  .console{margin:-22px auto 0}
+}

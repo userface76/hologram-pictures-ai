@@ -31,7 +31,7 @@ type Asset = { url: string; key: string; size?: number; contentType?: string; ro
 type ImageSlot = { preview: string | null; asset: Asset | null; uploading: boolean; error: string | null };
 
 const API = import.meta.env.VITE_API_URL || (window.location.hostname === "localhost" ? "http://localhost:8080" : "https://hologramapi-production.up.railway.app");
-const nodeLabels = ["MINIMAX H3", "PROJECTS", "ASSETS", "PROMPT AI", "RENDER", "LIBRARY", "AUDIO", "SCENES"];
+const nodeLabels = ["HOLO SKILL", "MINIMAX", "GROK", "PROJECTS", "HIGGSFIELD", "RENDER", "ASSETS", "AUDIO"];
 const dataLabels = ["VIDEO", "VOICE", "IMAGE", "PROMPT", "MODEL", "R2", "SUPABASE", "RENDER", "API", "MEMORY", "SCENE", "AUDIO"];
 const imageSlots: Array<{ role: ImageRole; label: string; detail: string; short: string }> = [
   { role: "first_frame", label: "시작 프레임", detail: "영상의 첫 장면", short: "START" },
@@ -305,7 +305,9 @@ function App() {
       </header>
 
       <section className="worldStage">
-        <div className="scene3d">
+        <div className="heroGlow heroGlowA" />
+        <div className="heroGlow heroGlowB" />
+        <div className="scene3d ecosystemScene">
           <div className="dataCube cubeOuter" />
           <div className="dataCube cubeMid" />
           <div className="globeShell">
@@ -341,14 +343,21 @@ function App() {
               <strong>HOLOGRAM</strong>
               <span>CORE</span>
               <em>HOLO</em>
-              <small>GPT-5.6 SOL</small>
+              <small>VIDEO INTELLIGENCE</small>
             </div>
+          </div>
+
+          <div className="ecosystemLegend" aria-hidden="true">
+            <span>IDEA</span><i />
+            <span>SKILL</span><i />
+            <span>MODEL</span><i />
+            <span>RENDER</span>
           </div>
         </div>
 
         <div className="worldCaption">
           <strong>FROM IDEA TO VIDEO INTELLIGENCE</strong>
-          <span>생각을 이해하고 · 질문하고 · 정리해 영상 생성 프롬프트로 연결합니다.</span>
+          <span>HOLO SKILL이 아이디어를 분석하고 · 최적의 영상 엔진으로 연결합니다.</span>
         </div>
       </section>
 
