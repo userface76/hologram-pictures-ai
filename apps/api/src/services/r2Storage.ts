@@ -186,3 +186,19 @@ export async function writeShowcaseManifest(items: ShowcaseItem[]) {
     CacheControl: "no-store, max-age=0",
   }));
 }
+
+export async function archiveComfyResponse(userId: string, jobId: string, response: Response) {
+  const r2=getR2Client(), bucket=process.env.R2_BUCKET;
+  if (!r2 || !bucket || !process.env.R2_PUBLIC_BASE_URL) throw new Error("R2 archive unavailable");
+  if (!response.ok || !response.body || !/^[a-zA-Z0-9_-]+$/.test(jobId)) throw new Error("Invalid archive response");
+  const reader=response.body.getReader();
+  const chunks: Buffer[]=[]; let size=0;
+  try {
+    while(true) { const {done,value}=await reader.read(); if(done) break; size+=value.byteLength; if(size>100*1024*1024) throw new Error("Video exceeds 100 MB"); chunks.push(Buffer.from(value)); }
+  } finally { await reader.cancel().catch(()=>{}); }
+  const bytes=Buffer.concat(chunks);
+  if(bytes.length<12 || bytes.toString("ascii",4,8)!=="ftyp") throw new Error("Invalid MP4 header");
+  const key=tenantPrefix(userId)+"/renders/comfyui/"+jobId+".mp4";
+  await r2.send(new PutObjectCommand({Bucket:bucket,Key:key,Body:bytes,ContentType:"video/mp4"}));
+  return {key,url:publicUrlFor(key)!};
+}
