@@ -5,6 +5,7 @@ import "./studio.css";
 const API = import.meta.env.VITE_API_URL || (window.location.hostname === "localhost" ? "http://localhost:8080" : "https://hologramapi-production.up.railway.app");
 
 const CATEGORIES = ["전체", "광고·브랜드", "시네마틱", "숏폼", "제품·푸드", "인물·캐릭터", "애니·판타지", "패션·뷰티", "아트·실험"] as const;
+const PAGE_SIZE = 20;
 type Category = typeof CATEGORIES[number];
 
 type Project = {
@@ -124,6 +125,8 @@ function App() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [totals, setTotals] = useState({ projects: 0, videos: 0, assets: 0 });
+  const [pages, setPages] = useState<Record<Tab, number>>({ projects: 1, videos: 1, assets: 1 });
+  const [pageLoading, setPageLoading] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [creditStates, setCreditStates] = useState<Record<string, CreditState>>({});
   const [loading, setLoading] = useState(true);
@@ -134,9 +137,9 @@ function App() {
   useEffect(() => {
     let alive = true;
     void Promise.all([
-      readJson("/api/projects"),
-      readJson("/api/videos"),
-      readJson("/api/assets"),
+      readJson(`/api/projects?page=1&pageSize=${PAGE_SIZE}`),
+      readJson(`/api/videos?page=1&pageSize=${PAGE_SIZE}`),
+      readJson(`/api/assets?page=1&pageSize=${PAGE_SIZE}`),
       readJson("/api/jobs"),
     ]).then(async ([p, v, a, j]) => {
       if (!alive) return;
@@ -171,6 +174,63 @@ function App() {
     });
     return () => { alive = false; };
   }, []);
+
+
+  async function loadStudioPage(kind: Tab, page: number) {
+    const safePage = Math.max(1, page);
+    setPageLoading(true);
+    setError("");
+    try {
+      const data = await readJson(`/api/${kind}?page=${safePage}&pageSize=${PAGE_SIZE}`);
+      if (kind === "projects") {
+        setProjects(data.projects || []);
+        setTotals((prev) => ({ ...prev, projects: Number(data.totalCount || 0) }));
+      } else if (kind === "videos") {
+        setVideos(data.videos || []);
+        setTotals((prev) => ({ ...prev, videos: Number(data.totalCount || 0) }));
+      } else {
+        setAssets(data.assets || []);
+        setTotals((prev) => ({ ...prev, assets: Number(data.totalCount || 0) }));
+      }
+      setPages((prev) => ({ ...prev, [kind]: safePage }));
+      window.setTimeout(() => document.querySelector(".studioTabs")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+    } catch (e: any) {
+      setError(e?.message || "페이지를 불러오지 못했습니다.");
+    } finally {
+      setPageLoading(false);
+    }
+  }
+
+  function pageCount(kind: Tab) {
+    return Math.max(1, Math.ceil(totals[kind] / PAGE_SIZE));
+  }
+
+  function pagination(kind: Tab) {
+    const current = pages[kind];
+    const totalPages = pageCount(kind);
+    if (totalPages <= 1) return null;
+    const start = Math.max(1, Math.min(current - 2, totalPages - 4));
+    const end = Math.min(totalPages, start + 4);
+    const pageNumbers = Array.from({ length: end - start + 1 }, (_, i) => start + i);
+    return (
+      <nav className="studioPagination" aria-label={`${kind} 페이지 이동`}>
+        <button disabled={current <= 1 || pageLoading} onClick={() => void loadStudioPage(kind, current - 1)}>이전</button>
+        {pageNumbers.map((page) => (
+          <button
+            key={page}
+            className={page === current ? "active" : ""}
+            disabled={pageLoading}
+            aria-current={page === current ? "page" : undefined}
+            onClick={() => void loadStudioPage(kind, page)}
+          >
+            {page}
+          </button>
+        ))}
+        <button disabled={current >= totalPages || pageLoading} onClick={() => void loadStudioPage(kind, current + 1)}>다음</button>
+        <span>{current} / {totalPages} 페이지 · 총 {totals[kind]}개</span>
+      </nav>
+    );
+  }
 
   const jobByProject = useMemo(() => {
     const map = new Map<string, Job>();
@@ -319,9 +379,10 @@ function App() {
       {tab === "videos" && <div className="privacyNote">공유는 현재 <b>링크 보유자 방식</b>입니다. R2 공개 URL 구조에서는 진짜 비공개를 보장할 수 없어, 비공개 토글은 저장소를 Private + Signed URL 방식으로 전환한 뒤 제공하는 것이 안전합니다.</div>}
       {notice && <div className="studioNotice">{notice}</div>}
       {error && <div className="studioError">{error}</div>}
-      {loading && <div className="studioLoading">HOLO가 내 작업실을 불러오는 중…</div>}
+      {(loading || pageLoading) && <div className="studioLoading">{loading ? "HOLO가 내 작업실을 불러오는 중…" : `${pages[tab]}페이지를 불러오는 중…`}</div>}
 
       {!loading && tab === "projects" && (
+        <>
         <section className="projectGrid">
           {filteredProjects.length === 0 && <div className="emptyState">이 카테고리에 저장된 프로젝트가 없습니다.</div>}
           {filteredProjects.map((project) => {
@@ -350,9 +411,12 @@ function App() {
             );
           })}
         </section>
+        {pagination("projects")}
+        </>
       )}
 
       {!loading && tab === "videos" && (
+        <>
         <section className="videoGrid">
           {filteredVideos.length === 0 && <div className="emptyState">이 카테고리에 완성된 영상이 없습니다.</div>}
           {filteredVideos.map((video, index) => {
@@ -376,9 +440,12 @@ function App() {
             );
           })}
         </section>
+        {pagination("videos")}
+        </>
       )}
 
       {!loading && tab === "assets" && (
+        <>
         <section className="assetGrid">
           {assets.length === 0 && <div className="emptyState">아직 업로드한 이미지가 없습니다.</div>}
           {assets.map((asset, index) => (
@@ -393,6 +460,8 @@ function App() {
             </article>
           ))}
         </section>
+        {pagination("assets")}
+        </>
       )}
 
       <footer className="studioFooter">HOLOGRAM PICTURES AI · MY STUDIO · PERSONAL CREATIVE WORKSPACE</footer>
