@@ -1,3 +1,4 @@
+import { sharedSkillContext, modelCapabilityNotes } from "./sharedSkills.js";
 import OpenAI from "openai";
 import { fallbackParse } from "./fallbackParser.js";
 import type { VideoIntent, VideoMediaInputs } from "./types.js";
@@ -14,8 +15,9 @@ function resolveOpenAIModel() {
 }
 
 function buildInput(text: string, media?: VideoMediaInputs) {
+  const { routing, instructions } = sharedSkillContext(text, media);
   const content: any[] = [
-    { type: "input_text", text: `${systemPrompt}\n\nUSER COMMAND:\n${text}` },
+    { type: "input_text", text: `${systemPrompt}\n\nSHARED HOLO RULES:\n${instructions}\n${modelCapabilityNotes("minimax-h3")}\nROUTING: ${JSON.stringify(routing.stable)}\n\nUSER COMMAND:\n${text}` },
   ];
 
   if (media?.firstFrameUrl) {

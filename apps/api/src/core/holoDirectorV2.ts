@@ -1,11 +1,13 @@
+import { sharedSkillContext } from "./sharedSkills.js";
+import { interpretWithAstra } from "./astra.js";
 import fs from "node:fs";
 import path from "node:path";
 import OpenAI from "openai";
 import { fallbackParse } from "./fallbackParser.js";
-import { routeHoloSkills, type RoutedCandidate, type SkillRoutingPlan } from "./skillRouter.js";
+import { type RoutedCandidate, type SkillRoutingPlan } from "./skillRouter.js";
 import type { VideoIntent, VideoMediaInputs } from "./types.js";
 
-export type DirectorCandidateId = "stable" | "cinematic" | "user_based";
+export type DirectorCandidateId = "stable" | "cinematic" | "user_based" | "astra";
 
 export type DirectorCandidate = {
   id: DirectorCandidateId;
@@ -86,7 +88,7 @@ function routeBlock(label: string, route: RoutedCandidate) {
 
 function buildInput(text: string, media: VideoMediaInputs | undefined, routing: SkillRoutingPlan) {
   const skillPack = loadRuntimeSkills(routing);
-  const system = `You are HOLO DIRECTOR MODE for HOLOGRAM PICTURES AI.\nReturn ONLY valid JSON.\n\nUse the HOLO runtime skill knowledge as directing rules, but obey the deterministic ROUTING PLAN below. Do not make A and B two paraphrases of the same plan.\n\nHOLO RUNTIME SKILL KNOWLEDGE:\n${skillPack}\n\nDETECTED ROUTES: ${routing.detected.join(", ")}\n\n${routeBlock("OPTION A / CONTROL", routing.stable)}\n\n${routeBlock("OPTION B / IMPACT", routing.cinematic)}\n\n${routeBlock("OPTION C / USER BASED", routing.userBased)}\n\nDIFFERENCE GATE:\n1. A and B must use different primary skill families.\n2. A and B must use different opening camera/shot strategy.\n3. B must contain at least one meaningful impact decision absent from A.\n4. A must contain at least one control/continuity decision absent from B.\n5. C must preserve the user's story, subject order, event order and core intent; only add camera/framing/lens/lighting/motion/ending production language.\n6. Exactly one option has recommended=true.\n\nDo not invent visual facts not supported by the user's text or supplied images. Preserve names, brands, product facts and character identity when safe, but for MiniMax generation avoid third-party franchise character names in the final generation prompt; translate them into generic visual archetypes while preserving the user's intended look and role. If minors/children are present, avoid direct attack/counterattack wording, combat contact, or violent choreography; describe playful, non-contact superhero training, posing, dodging, defensive movement, and cinematic energy effects instead. Respect duration feasibility and model constraints.\n\nJSON schema:\n{\n  \"analysis\": {\"intent\":string,\"subject\":string,\"format\":string,\"duration\":number,\"risks\":string[]},\n  \"plan\": {\"title\":string,\"model\":string,\"duration\":number,\"aspectRatio\":string,\"resolution\":string,\"audio\":boolean,\"style\":string,\"camera\":string[],\"scenes\":[{\"index\":number,\"seconds\":number,\"description\":string}]},\n  \"candidates\": [\n    {\"id\":\"stable\",\"label\":string,\"summary\":string,\"reason\":string,\"recommended\":boolean,\"score\":number,\"skills\":string[],\"prompt\":string},\n    {\"id\":\"cinematic\",\"label\":string,\"summary\":string,\"reason\":string,\"recommended\":boolean,\"score\":number,\"skills\":string[],\"prompt\":string},\n    {\"id\":\"user_based\",\"label\":string,\"summary\":string,\"reason\":string,\"recommended\":boolean,\"score\":number,\"preservationScore\":number,\"skills\":string[],\"prompt\":string}\n  ]\n}\n\nDefaults: model=minimax-h3, duration=15 seconds when unspecified (valid range 4-15 seconds), resolution=768p. Use 9:16 for explicit vertical/short-form requests; otherwise preserve requested format or use 16:9.\n\nMEDIA:\n${mediaNotes(media)}\n\nUSER IDEA:\n${text}`;
+  const system = `You are HOLO DIRECTOR MODE for HOLOGRAM PICTURES AI.\nReturn ONLY valid JSON.\n\nUse the HOLO runtime skill knowledge as directing rules, but obey the deterministic ROUTING PLAN below. Do not make A and B two paraphrases of the same plan.\n\nHOLO RUNTIME SKILL KNOWLEDGE:\n${sharedSkillContext(text, media).instructions}\n\n${skillPack}\n\nDETECTED ROUTES: ${routing.detected.join(", ")}\n\n${routeBlock("OPTION A / CONTROL", routing.stable)}\n\n${routeBlock("OPTION B / IMPACT", routing.cinematic)}\n\n${routeBlock("OPTION C / USER BASED", routing.userBased)}\n\nDIFFERENCE GATE:\n1. A and B must use different primary skill families.\n2. A and B must use different opening camera/shot strategy.\n3. B must contain at least one meaningful impact decision absent from A.\n4. A must contain at least one control/continuity decision absent from B.\n5. C must preserve the user's story, subject order, event order and core intent; only add camera/framing/lens/lighting/motion/ending production language.\n6. Exactly one option has recommended=true.\n\nDo not invent visual facts not supported by the user's text or supplied images. Preserve names, brands, product facts and character identity when safe, but for MiniMax generation avoid third-party franchise character names in the final generation prompt; translate them into generic visual archetypes while preserving the user's intended look and role. If minors/children are present, avoid direct attack/counterattack wording, combat contact, or violent choreography; describe playful, non-contact superhero training, posing, dodging, defensive movement, and cinematic energy effects instead. Respect duration feasibility and model constraints.\n\nJSON schema:\n{\n  \"analysis\": {\"intent\":string,\"subject\":string,\"format\":string,\"duration\":number,\"risks\":string[]},\n  \"plan\": {\"title\":string,\"model\":string,\"duration\":number,\"aspectRatio\":string,\"resolution\":string,\"audio\":boolean,\"style\":string,\"camera\":string[],\"scenes\":[{\"index\":number,\"seconds\":number,\"description\":string}]},\n  \"candidates\": [\n    {\"id\":\"stable\",\"label\":string,\"summary\":string,\"reason\":string,\"recommended\":boolean,\"score\":number,\"skills\":string[],\"prompt\":string},\n    {\"id\":\"cinematic\",\"label\":string,\"summary\":string,\"reason\":string,\"recommended\":boolean,\"score\":number,\"skills\":string[],\"prompt\":string},\n    {\"id\":\"user_based\",\"label\":string,\"summary\":string,\"reason\":string,\"recommended\":boolean,\"score\":number,\"preservationScore\":number,\"skills\":string[],\"prompt\":string}\n  ]\n}\n\nDefaults: model=minimax-h3, duration=15 seconds when unspecified (valid range 4-15 seconds), resolution=768p. Use 9:16 for explicit vertical/short-form requests; otherwise preserve requested format or use 16:9.\n\nMEDIA:\n${mediaNotes(media)}\n\nUSER IDEA:\n${text}`;
 
   const content: any[] = [{ type: "input_text", text: system }];
   if (media?.firstFrameUrl) {
@@ -116,11 +118,13 @@ function unique(values: string[]) {
 function normalizeCandidate(raw: any, id: DirectorCandidateId, fallbackPrompt: string, route: RoutedCandidate): DirectorCandidate {
   const fallbackScore = id === "stable" ? 92 : id === "cinematic" ? 90 : 90;
   const labels: Record<DirectorCandidateId, string> = {
+    astra: "ASTRA AI · 종합 프롬프트",
     stable: "안정형 · 일관성 우선",
     cinematic: "시네마틱 · 임팩트 우선",
     user_based: "내 문장 유지 · 연출 보강",
   };
   const summaries: Record<DirectorCandidateId, string> = {
+    astra: "사용자 의도와 공통 스킬을 종합하여 제작 프롬프트를 설계합니다.",
     stable: "인물·제품·공간의 일관성과 생성 안정성을 우선합니다.",
     cinematic: "다른 샷 구조와 카메라 전략으로 시각적 임팩트를 강화합니다.",
     user_based: "원래 이야기와 순서를 유지하고 카메라·구도·조명만 보강합니다.",
@@ -181,7 +185,7 @@ function ensureOneRecommendation(candidates: DirectorCandidate[]) {
 
 function fallbackDirector(text: string, media?: VideoMediaInputs): DirectorResult {
   const base = fallbackParse(text);
-  const routing = routeHoloSkills(text, media);
+  const routing = sharedSkillContext(text, media).routing;
   const stablePrompt = `${base.refinedPrompt}\n\nCONTROL DIRECTOR: preserve identity/product facts and continuity. Use readable blocking, consistent lighting/screen direction, one restrained camera intention, conservative motion and a clear ending. Simplify rather than overload.`;
   const cinematicPrompt = `${base.refinedPrompt}\n\nIMPACT DIRECTOR: redesign the shot architecture for a stronger opening and payoff. Use a purposeful cinematic angle/lens relationship, a more expressive but feasible camera move, stronger visual rhythm and a deliberate reveal/hero ending. Keep hard identity/product facts unchanged.`;
   const userPrompt = `${text}\n\nUSER-BASED PRODUCTION ENHANCEMENT: keep the original story and event order. Add only camera angle, shot size, lens, composition, lighting source/direction, natural motion wording and ending framing.`;
@@ -206,10 +210,10 @@ function fallbackDirector(text: string, media?: VideoMediaInputs): DirectorResul
   };
 }
 
-export async function generateDirectorRecommendationsV2(text: string, media?: VideoMediaInputs): Promise<DirectorResult> {
+async function generateThreeRecommendations(text: string, media?: VideoMediaInputs): Promise<DirectorResult> {
   const key = process.env.OPENAI_API_KEY;
   if (!key) return fallbackDirector(text, media);
-  const routing = routeHoloSkills(text, media);
+  const routing = sharedSkillContext(text, media).routing;
 
   try {
     const client = new OpenAI({ apiKey: key });
@@ -277,4 +281,19 @@ export async function generateDirectorRecommendationsV2(text: string, media?: Vi
     console.error("HOLO Director V2 failed; falling back.", error);
     return fallbackDirector(text, media);
   }
+}
+
+// Astra is opt-in so the existing three-option flow incurs no extra model call.
+export async function generateDirectorRecommendationsV2(text: string, media?: VideoMediaInputs, includeAstra = false): Promise<DirectorResult> {
+  const result = await generateThreeRecommendations(text, media);
+  if (!includeAstra) return result;
+  const astra = await interpretWithAstra(text, media);
+  const route = sharedSkillContext(text, media).routing;
+  const candidate = normalizeCandidate({
+    label: astra.source === "astra" ? "ASTRA AI · 종합 프롬프트" : "ASTRA · 기본 규칙 대체안",
+    reason: astra.source === "astra" ? "독립적인 Astra 분석 결과입니다." : "AI 호출 불가로 기본 규칙을 사용했습니다.",
+    recommended: false,
+    prompt: astra.plan.refinedPrompt,
+  }, "astra", text, route.stable);
+  return { ...result, candidates: [...result.candidates, candidate] };
 }

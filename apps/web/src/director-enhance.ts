@@ -1,6 +1,6 @@
 import "./director-mode.css";
 
-type CandidateId = "stable" | "cinematic" | "user_based";
+type CandidateId = "stable" | "cinematic" | "user_based" | "astra";
 
 type Candidate = {
   id: CandidateId;
@@ -71,12 +71,14 @@ function removeSelectedChip() {
 }
 
 function optionCode(id: CandidateId) {
+  if (id === "astra") return "OPTION D · ASTRA AI";
   if (id === "stable") return "OPTION A · CONTROL";
   if (id === "cinematic") return "OPTION B · IMPACT";
   return "OPTION C · USER BASED";
 }
 
 function optionShort(id: CandidateId) {
+  if (id === "astra") return "D · ASTRA AI";
   if (id === "stable") return "A · CONTROL";
   if (id === "cinematic") return "B · IMPACT";
   return "C · USER BASED";
@@ -167,7 +169,7 @@ function showDirectorOverlay(data: DirectorResponse, payload: CommandPayload | n
       <div class="holoDirectorHead">
         <div>
           <small>HOLO DIRECTOR MODE · SKILL ROUTER v1.6</small>
-          <h2>세 가지 연출 방향을 준비했습니다</h2>
+          <h2>${data.candidates.length}가지 연출 방향을 준비했습니다</h2>
           <p>A는 안정성과 일관성, B는 시네마틱 임팩트, C는 내가 쓴 내용을 유지하면서 카메라·구도·조명만 보강합니다.</p>
         </div>
         <button class="holoDirectorClose" type="button" aria-label="닫기">×</button>
@@ -189,8 +191,9 @@ function showDirectorOverlay(data: DirectorResponse, payload: CommandPayload | n
         ${(data.candidates || []).map(cardHtml).join("")}
       </div>
       <div class="holoDirectorFooter">
-        <span>세 안 중 하나를 선택하면 입력창에 적용됩니다. 그 다음 <b>영상 만들기</b>를 누르면 선택한 프롬프트로 생성됩니다.</span>
-        <button class="holoDirectorRetry" type="button">↻ A/B/C 다시 추천받기</button>
+        <span>원하는 안을 선택하면 입력창에 적용됩니다. 그 다음 <b>영상 만들기</b>를 누르면 선택한 프롬프트로 생성됩니다.</span>
+        ${data.candidates.some(c => c.id === "astra") ? "" : '<button class="holoDirectorAstra holoDirectorRetry" type="button">D · ASTRA 프롬프트 추가 생성</button>'}
+        <button class="holoDirectorRetry" type="button">↻ 다시 추천받기</button>
       </div>
     </section>
   `;
@@ -211,7 +214,10 @@ function showDirectorOverlay(data: DirectorResponse, payload: CommandPayload | n
       if (candidate) chooseCandidate(candidate, true);
     });
   });
-  overlay.querySelector(".holoDirectorRetry")?.addEventListener("click", () => {
+  overlay.querySelector(".holoDirectorAstra")?.addEventListener("click", () => {
+    if (lastPayload) void requestDirector(lastPayload, true, true);
+  });
+  overlay.querySelector(".holoDirectorRetry:not(.holoDirectorAstra)")?.addEventListener("click", () => {
     if (lastPayload) void requestDirector(lastPayload, true);
   });
 
@@ -226,7 +232,7 @@ function apiBaseFromCommandUrl(commandUrl: string) {
 let authenticatedFetch: typeof window.fetch | null = null;
 let lastCommandUrl = "";
 
-async function requestDirector(payload: CommandPayload, reopen = false) {
+async function requestDirector(payload: CommandPayload, reopen = false, includeAstra = false) {
   if (!authenticatedFetch || !lastCommandUrl) return null;
   const apiBase = apiBaseFromCommandUrl(lastCommandUrl);
   const overlay = activeOverlay;
@@ -235,7 +241,7 @@ async function requestDirector(payload: CommandPayload, reopen = false) {
     const response = await authenticatedFetch(`${apiBase}/api/director`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ command: payload.command, images: payload.images }),
+      body: JSON.stringify({ command: payload.command, images: payload.images, includeAstra }),
     });
     const data = await response.json() as DirectorResponse & { error?: string };
     if (!response.ok) throw new Error(data.error || "HOLO Director 요청 실패");
