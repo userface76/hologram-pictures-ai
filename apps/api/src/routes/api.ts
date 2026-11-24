@@ -60,6 +60,12 @@ function userIdOf(req: any) {
   return String(userId);
 }
 
+function paginationOf(req: any) {
+  const page = Math.max(1, Math.floor(Number(req.query?.page || 1) || 1));
+  const pageSize = Math.max(1, Math.min(100, Math.floor(Number(req.query?.pageSize || 20) || 20)));
+  return { page, pageSize, offset: (page - 1) * pageSize };
+}
+
 async function persistJob(userId: string, job: any) {
   try { await upsertRenderJob(userId, job); }
   catch (error) { console.warn("Supabase render_jobs persistence skipped:", error); }
@@ -203,8 +209,9 @@ apiRouter.post("/assets/upload", async (req, res, next) => {
 apiRouter.get("/assets", async (req, res, next) => {
   try {
     const userId = userIdOf(req);
-    const [assets, counts] = await Promise.all([listAssets(userId), getStudioCounts(userId)]);
-    res.json({ assets, totalCount: counts.assets });
+    const { page, pageSize, offset } = paginationOf(req);
+    const [assets, counts] = await Promise.all([listAssets(userId, pageSize, offset), getStudioCounts(userId)]);
+    res.json({ assets, totalCount: counts.assets, page, pageSize, totalPages: Math.max(1, Math.ceil(counts.assets / pageSize)) });
   } catch (e) { next(e); }
 });
 
@@ -222,15 +229,17 @@ apiRouter.get("/jobs", async (req, res, next) => {
 apiRouter.get("/projects", async (req, res, next) => {
   try {
     const userId = userIdOf(req);
-    const [projects, counts] = await Promise.all([listProjects(userId), getStudioCounts(userId)]);
-    res.json({ projects, totalCount: counts.projects });
+    const { page, pageSize, offset } = paginationOf(req);
+    const [projects, counts] = await Promise.all([listProjects(userId, pageSize, offset), getStudioCounts(userId)]);
+    res.json({ projects, totalCount: counts.projects, page, pageSize, totalPages: Math.max(1, Math.ceil(counts.projects / pageSize)) });
   } catch (e) { next(e); }
 });
 apiRouter.get("/videos", async (req, res, next) => {
   try {
     const userId = userIdOf(req);
-    const [videos, counts] = await Promise.all([listVideos(userId), getStudioCounts(userId)]);
-    res.json({ videos, totalCount: counts.videos });
+    const { page, pageSize, offset } = paginationOf(req);
+    const [videos, counts] = await Promise.all([listVideos(userId, pageSize, offset), getStudioCounts(userId)]);
+    res.json({ videos, totalCount: counts.videos, page, pageSize, totalPages: Math.max(1, Math.ceil(counts.videos / pageSize)) });
   } catch (e) { next(e); }
 });
 
