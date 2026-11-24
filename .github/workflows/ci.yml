@@ -24,3 +24,5 @@ jobs:
         run: npm run build
       - name: Director regression tests
         run: node --test apps/api/tests/director.test.mjs
+      - name: ComfyUI offline integration tests
+        run: node --test apps/api/tests/comfyui.test.mjs
