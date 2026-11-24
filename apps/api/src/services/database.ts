@@ -216,26 +216,32 @@ export async function getStudioCounts(userId: string) {
   };
 }
 
-export async function listProjects(userId: string, limit = 30) {
+export async function listProjects(userId: string, limit = 20, offset = 0) {
   const db = getSupabaseAdmin();
   if (!db) return [];
-  const { data, error } = await db.from("projects").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(limit);
+  const safeLimit = Math.max(1, Math.min(100, Math.floor(limit)));
+  const safeOffset = Math.max(0, Math.floor(offset));
+  const { data, error } = await db.from("projects").select("*").eq("user_id", userId).order("created_at", { ascending: false }).range(safeOffset, safeOffset + safeLimit - 1);
   if (error) throw error;
   return data ?? [];
 }
 
-export async function listVideos(userId: string, limit = 30) {
+export async function listVideos(userId: string, limit = 20, offset = 0) {
   const db = getSupabaseAdmin();
   if (!db) return [];
-  const { data, error } = await db.from("videos").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(limit);
+  const safeLimit = Math.max(1, Math.min(100, Math.floor(limit)));
+  const safeOffset = Math.max(0, Math.floor(offset));
+  const { data, error } = await db.from("videos").select("*").eq("user_id", userId).order("created_at", { ascending: false }).range(safeOffset, safeOffset + safeLimit - 1);
   if (error) throw error;
   return data ?? [];
 }
 
-export async function listAssets(userId: string, limit = 50) {
+export async function listAssets(userId: string, limit = 20, offset = 0) {
   const db = getSupabaseAdmin();
   if (!db) return [];
-  const { data, error } = await db.from("assets").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(limit);
+  const safeLimit = Math.max(1, Math.min(100, Math.floor(limit)));
+  const safeOffset = Math.max(0, Math.floor(offset));
+  const { data, error } = await db.from("assets").select("*").eq("user_id", userId).order("created_at", { ascending: false }).range(safeOffset, safeOffset + safeLimit - 1);
   if (error) throw error;
   return data ?? [];
 }
