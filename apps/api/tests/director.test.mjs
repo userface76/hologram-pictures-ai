@@ -25,3 +25,10 @@ test("shared routing and capability constraints", () => {
   assert.throws(() => getVideoProvider("comfyui-unregistered"), /not registered/);
   assert.equal(getVideoProvider("minimax-h3").id, "minimax-h3");
 });
+
+test("registered ComfyUI stays disabled until live verification", async () => {
+  delete process.env.COMFYUI_LIVE_VERIFIED;
+  const {listVideoProviders}=await import("../dist/services/modelRouter.js");
+  assert.equal(listVideoProviders().find(p=>p.id==="comfyui-wan22").enabled,false);
+  assert.throws(()=>getVideoProvider("comfyui-wan22"),/not registered or validated/);
+});
