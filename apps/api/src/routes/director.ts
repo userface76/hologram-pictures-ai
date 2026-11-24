@@ -13,6 +13,7 @@ const imagesSchema = z.object({
 const directorSchema = z.object({
   command: z.string().min(1).max(12000),
   images: imagesSchema,
+  includeAstra: z.boolean().optional(),
 });
 
 function withDefaultDuration(command: string) {
@@ -24,7 +25,7 @@ function withDefaultDuration(command: string) {
 directorRouter.post("/director", async (req, res, next) => {
   try {
     const input = directorSchema.parse(req.body);
-    const result = await generateDirectorRecommendationsV2(withDefaultDuration(input.command), input.images);
+    const result = await generateDirectorRecommendationsV2(withDefaultDuration(input.command), input.images, input.includeAstra);
     result.plan.duration = /(\d{1,2})\s*초/.test(input.command) ? result.plan.duration : 10;
     result.analysis.duration = /(\d{1,2})\s*초/.test(input.command) ? result.analysis.duration : 10;
     res.json(result);
