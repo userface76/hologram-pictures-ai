@@ -1,4 +1,5 @@
 import express, { Router } from "express";
+import { ComfyUIClient, comfyuiConfigured } from "../services/comfyuiClient.js";
 import multer from "multer";
 import { z } from "zod";
 import { interpretWithAstra } from "../core/astra.js";
@@ -157,6 +158,19 @@ apiRouter.get("/system/status", (req, res) => res.json({
   r2: isR2Configured(),
   composer: { configured: isHoloComposerConfigured(), renderer: "hyperframes-compatible" },
 }));
+
+// Pilot health check only: no paid generation is exposed to members.
+apiRouter.get("/comfyui/health", async (req, res) => {
+  const admins = (process.env.COMFYUI_ADMIN_USER_IDS || "").split(",").map(s => s.trim()).filter(Boolean);
+  if (!admins.includes(userIdOf(req))) return res.status(403).json({ error: "forbidden" });
+  if (!comfyuiConfigured()) return res.status(503).json({ configured: false });
+  try {
+    await new ComfyUIClient().health();
+    return res.json({ configured: true, reachable: true });
+  } catch {
+    return res.status(502).json({ configured: true, reachable: false });
+  }
+});
 
 apiRouter.get("/account", async (req, res, next) => {
   try {
