@@ -1,4 +1,5 @@
 import { sharedSkillContext } from "./sharedSkills.js";
+import { interpretWithAstra } from "./astra.js";
 import fs from "node:fs";
 import path from "node:path";
 import OpenAI from "openai";
@@ -6,7 +7,7 @@ import { fallbackParse } from "./fallbackParser.js";
 import { type RoutedCandidate, type SkillRoutingPlan } from "./skillRouter.js";
 import type { VideoIntent, VideoMediaInputs } from "./types.js";
 
-export type DirectorCandidateId = "stable" | "cinematic" | "user_based";
+export type DirectorCandidateId = "stable" | "cinematic" | "user_based" | "astra";
 
 export type DirectorCandidate = {
   id: DirectorCandidateId;
@@ -117,11 +118,13 @@ function unique(values: string[]) {
 function normalizeCandidate(raw: any, id: DirectorCandidateId, fallbackPrompt: string, route: RoutedCandidate): DirectorCandidate {
   const fallbackScore = id === "stable" ? 92 : id === "cinematic" ? 90 : 90;
   const labels: Record<DirectorCandidateId, string> = {
+    astra: "ASTRA AI · 종합 프롬프트",
     stable: "안정형 · 일관성 우선",
     cinematic: "시네마틱 · 임팩트 우선",
     user_based: "내 문장 유지 · 연출 보강",
   };
   const summaries: Record<DirectorCandidateId, string> = {
+    astra: "사용자 의도와 공통 스킬을 종합하여 제작 프롬프트를 설계합니다.",
     stable: "인물·제품·공간의 일관성과 생성 안정성을 우선합니다.",
     cinematic: "다른 샷 구조와 카메라 전략으로 시각적 임팩트를 강화합니다.",
     user_based: "원래 이야기와 순서를 유지하고 카메라·구도·조명만 보강합니다.",
@@ -207,7 +210,7 @@ function fallbackDirector(text: string, media?: VideoMediaInputs): DirectorResul
   };
 }
 
-export async function generateDirectorRecommendationsV2(text: string, media?: VideoMediaInputs): Promise<DirectorResult> {
+async function generateThreeRecommendations(text: string, media?: VideoMediaInputs): Promise<DirectorResult> {
   const key = process.env.OPENAI_API_KEY;
   if (!key) return fallbackDirector(text, media);
   const routing = sharedSkillContext(text, media).routing;
@@ -278,4 +281,19 @@ export async function generateDirectorRecommendationsV2(text: string, media?: Vi
     console.error("HOLO Director V2 failed; falling back.", error);
     return fallbackDirector(text, media);
   }
+}
+
+// Astra is opt-in so the existing three-option flow incurs no extra model call.
+export async function generateDirectorRecommendationsV2(text: string, media?: VideoMediaInputs, includeAstra = false): Promise<DirectorResult> {
+  const result = await generateThreeRecommendations(text, media);
+  if (!includeAstra) return result;
+  const astra = await interpretWithAstra(text, media);
+  const route = sharedSkillContext(text, media).routing;
+  const candidate = normalizeCandidate({
+    label: astra.source === "astra" ? "ASTRA AI · 종합 프롬프트" : "ASTRA · 기본 규칙 대체안",
+    reason: astra.source === "astra" ? "독립적인 Astra 분석 결과입니다." : "AI 호출 불가로 기본 규칙을 사용했습니다.",
+    recommended: false,
+    prompt: astra.plan.refinedPrompt,
+  }, "astra", text, route.stable);
+  return { ...result, candidates: [...result.candidates, candidate] };
 }
