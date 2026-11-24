@@ -30,6 +30,7 @@ function isConfigured(id: string) {
 
 export function getVideoProvider(id?: string): VideoProvider {
   const selected = forcedEngine() || id || "minimax-h3";
+  if (selected.startsWith("comfyui") && !providers[selected]) throw new Error("ComfyUI workflow is not registered or validated.");
   return providers[selected] || minimaxH3Provider;
 }
 
